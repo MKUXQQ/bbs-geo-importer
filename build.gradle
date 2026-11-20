@@ -1,0 +1,156 @@
+plugins { id 'java' }
+version = '1.5.20'
+group = 'local.bbsgeoimporter'
+base { archivesName = 'bbs-geo-importer-1.20.1-fabric' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+repositories { mavenCentral() }
+dependencies {
+    testCompileOnly files('E:/我的世界/.minecraft/libraries/cpw/mods/securejarhandler/2.1.10/securejarhandler-2.1.10.jar')
+    testImplementation files("E:/我的世界/.minecraft/libraries/org/openjdk/nashorn/nashorn-core/15.4/nashorn-core-15.4.jar", "E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-commons/9.6/asm-commons-9.6.jar")
+    compileOnly files(findProperty('fabricLoaderJar') ?: 'E:/我的世界/.minecraft/libraries/net/fabricmc/fabric-loader/0.16.14/fabric-loader-0.16.14.jar')
+    def gsonJar = files(findProperty('gsonJar') ?: 'E:/我的世界/.minecraft/libraries/com/google/code/gson/gson/2.10/gson-2.10.jar')
+    compileOnly gsonJar
+    compileOnly files('E:/我的世界/.minecraft/libraries/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar')
+    testImplementation gsonJar
+    testImplementation files('E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-util/9.6/asm-util-9.6.jar','E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-analysis/9.6/asm-analysis-9.6.jar')
+    def asmJar = files('E:/我的世界/.minecraft/libraries/org/ow2/asm/asm/9.6/asm-9.6.jar')
+    compileOnly files('E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-analysis/9.6/asm-analysis-9.6.jar')
+    compileOnly asmJar
+    testImplementation asmJar
+    compileOnly files('E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-tree/9.6/asm-tree-9.6.jar')
+    testImplementation files('E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-tree/9.6/asm-tree-9.6.jar', 'E:/我的世界/.minecraft/libraries/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar')
+}
+sourceSets.main {
+    java.srcDirs = ['src/main/java', 'src/fabric/java']
+    resources.srcDirs = ['src/fabric/resources', 'src/main/resources']
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 17 }
+tasks.register('acceptance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.ImporterAcceptance'
+    args layout.buildDirectory.dir('acceptance').get().asFile.absolutePath
+}
+sourceSets {
+    forge {
+        java.srcDirs = ['src/forge/java']
+        resources.srcDirs = ['src/forge/resources']
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+dependencies {
+    forgeCompileOnly fileTree('E:/我的世界/.minecraft/libraries/com/mojang/brigadier') { include '**/*.jar' }
+    forgeCompileOnly files('C:/Users/MKUXQ/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.4.28_mapped_official_1.20.1/forge-1.20.1-47.4.28_mapped_official_1.20.1.jar')
+    forgeCompileOnly fileTree('E:/我的世界/.minecraft/libraries') { include '**/fmlcore-1.20.1-47.4.28.jar', '**/fmlloader-1.20.1-47.4.28.jar', '**/javafmllanguage-1.20.1-47.4.28.jar', '**/eventbus-6.0.5.jar', '**/forgespi-7.0.1.jar', '**/fmlearlydisplay-1.20.1-47.4.28.jar', '**/mergetool-1.1.5-api.jar' }
+}
+tasks.register('forgeJar', Jar) {
+    archiveBaseName = 'bbs-geo-importer-1.20.1-forge'
+    manifest { attributes 'MixinConfigs': 'bbs_geo_importer.mixins.json' }
+    from(sourceSets.main.output) { exclude 'fabric.mod.json', 'local/bbsgeoimporter/FabricEntrypoint*' }
+    from sourceSets.forge.output
+}
+tasks.named('processResources') { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
+// Forge output uses production SRG member names for reflected Minecraft calls.
+tasks.named('assemble') { dependsOn 'forgeJar' }
+tasks.named('test') { enabled = false }
+tasks.register('publicModScan', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.PublicModScan'
+    args file('build/unadapted-weaponry-release.jar').absolutePath, file('build/public-mod-scan').absolutePath
+}
+tasks.register('installedScan', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.InstalledScan'
+    args file('build/installed-manifest.json').absolutePath, file('build/installed-scan-config').absolutePath
+}
+tasks.register('installedEffectiveScan', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.InstalledScan'
+    args file('build/installed-manifest.json').absolutePath, file('build/installed-effective-scan-config').absolutePath, 'effective'
+}
+tasks.register('hookAcceptance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.HookAcceptance'
+    args 'E:/我的世界/.minecraft/versions/bbs1.20.1动画/mods/geckolib-forge-1.20.1-4.8.4.jar', 'E:/我的世界/.minecraft/versions/bbs1.20.1动画/mods/bbs-2.7-1.20.1.jar'
+    if(file('build/geckolib-fabric-1.20.1-4.8.4.jar').exists()) args file('build/geckolib-fabric-1.20.1-4.8.4.jar').absolutePath
+}
+tasks.register('gsonCompatibility', JavaExec) {
+    dependsOn jar, testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.GsonCompatibility'
+    args tasks.jar.archiveFile.get().asFile.absolutePath
+}
+tasks.named('check') { dependsOn 'acceptance', 'hookAcceptance', 'gsonCompatibility', 'cataclysmCompatAcceptance' }
+tasks.register('cataclysmCompatAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.CataclysmCompatAcceptance' }
+
+tasks.register('apiLinkAudit', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ApiLinkAudit'; args file(findProperty('auditManifest') ?: 'build/installed-manifest.json').absolutePath, file(findProperty('auditOutput') ?: 'build/159-api-links.json').absolutePath }
+
+tasks.register('loadedStartupAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.LoadedStartupAcceptance'; maxHeapSize = '3g'; if(findProperty('loadedManifest')) systemProperty 'bbs.fixture.manifest', findProperty('loadedManifest') }
+
+tasks.register('focusedStartupAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.LoadedStartupAcceptance'; args 'golemoverhaul,geckolib,resourcefullib,irons_lib'; maxHeapSize = '2g' }
+
+def importerRestart = tasks.register('restartAcceptance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.RestartAcceptance'
+    jvmArgs '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED', '--add-opens=java.base/java.util.jar=ALL-UNNAMED'
+    classpath += files('E:/我的世界/.minecraft/libraries/cpw/mods/securejarhandler/2.1.10/securejarhandler-2.1.10.jar')
+}
+tasks.named('check') { dependsOn importerRestart }
+tasks.register('focused1514Acceptance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.Focused1514Acceptance'
+    args 'jurassic'
+}
+
+tasks.register('externalDomainAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ExternalDomainAcceptance'; if(findProperty('mowzieJar')) args findProperty('mowzieJar'); maxHeapSize = '2g' }
+tasks.register('focused1515Acceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.Focused1515Acceptance' }
+tasks.register('externalLimitsAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ExternalLimitsAcceptance' }
+
+tasks.register('focused1517Acceptance', JavaExec) { dependsOn testClasses, forgeClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.Focused1517Acceptance' }
+tasks.register('bytecodeIndexAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.BytecodeIndexAcceptance' }
+
+tasks.register('bbsWatchHotPathAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.BbsWatchHotPathAcceptance' }
+tasks.register('listTextureWarmupAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ListTextureWarmupAcceptance' }
+tasks.register('modelManagementUiAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ModelManagementUiAcceptance' }
+
+tasks.register('cubicSetupAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.CubicSetupAcceptance' }
+tasks.register('cubicMeshLifecycleAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.CubicMeshLifecycleAcceptance' }
+tasks.register('listModelResidencyAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.ListModelResidencyAcceptance' }
+tasks.register('vaoBufferOwnershipAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.VaoBufferOwnershipAcceptance' }
+tasks.register('nativeModelLoadingAcceptance', JavaExec) { dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.NativeModelLoadingAcceptance' }
+tasks.register('startupGateAcceptance', JavaExec) { dependsOn testClasses, forgeClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.StartupGateAcceptance' }
+tasks.register('startupWorkAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.StartupWorkAcceptance'
+    if(findProperty('sampleJar')) args file(findProperty('sampleJar')).absolutePath
+    maxHeapSize = '256m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.named('modelManagementUiAcceptance') { if(findProperty('bbsFixture')) systemProperty 'bbs.fixture.jar', file(findProperty('bbsFixture')).absolutePath }
+tasks.named('bbsWatchHotPathAcceptance') { if(findProperty('bbsFixture')) args file(findProperty('bbsFixture')).absolutePath }
+tasks.register('partialBindingBootstrapAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.PartialBindingBootstrapAcceptance'
+    if(findProperty('bbsFixture')) args file(findProperty('bbsFixture')).absolutePath
+    maxHeapSize = '256m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.register('realMowzieBindingAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.RealMowzieBindingAcceptance'
+    if(findProperty('bbsFixture')) args file(findProperty('mowzieJar') ?: 'E:/我的世界/.minecraft/versions/旧的铁魔法1.20.1的/mods/[Mowzie的生物] mowziesmobs-1.8.2.jar').absolutePath, file(findProperty('bbsFixture')).absolutePath
+    maxHeapSize = '384m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.register('realAzureConfigAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.RealAzureConfigAcceptance'
+    args file(findProperty('azureRoot') ?: 'E:/我的世界/.minecraft/versions/bbs1.20.1动画/mods/asterismarcanum-1.21.1-0.1.0').absolutePath,
+         file(findProperty('bbsFixture') ?: 'build/1520-bbs-fixtures/bbs28.jar').absolutePath
+    maxHeapSize = '384m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.register('formGridViewportAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath; mainClass = 'local.bbsgeoimporter.FormGridViewportAcceptance'
+    if(findProperty('bbsFixture')) args file(findProperty('bbsFixture')).absolutePath
+    maxHeapSize = '256m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.withType(JavaExec).configureEach { if(name in ['cubicSetupAcceptance','cubicMeshLifecycleAcceptance','listModelResidencyAcceptance','vaoBufferOwnershipAcceptance','nativeModelLoadingAcceptance','startupGateAcceptance','bbsWatchHotPathAcceptance','listTextureWarmupAcceptance','modelManagementUiAcceptance']) { maxHeapSize = '256m'; jvmArgs '-XX:ActiveProcessorCount=2' } }

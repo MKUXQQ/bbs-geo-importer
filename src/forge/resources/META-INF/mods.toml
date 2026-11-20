@@ -1,0 +1,20 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="bbs_geo_importer"
+version="1.5.20"
+displayName="BBS Geo Model Importer"
+description="Discover Geo resources with evidence-based dependency association and protected updates."
+[[dependencies.bbs_geo_importer]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="CLIENT"
+[[dependencies.bbs_geo_importer]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1]"
+ordering="NONE"
+side="CLIENT"

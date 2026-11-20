@@ -1,0 +1,16 @@
+.gradle/
+build/
+backups/
+reports/
+dsh-session-chat/
+*.log
+*.jar
+*.zip
+*.class
+*.pyc
+__pycache__/
+.idea/
+.vscode/
+local.properties
+/scripts/*
+!/scripts/package_check.py

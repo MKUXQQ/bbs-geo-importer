@@ -1,0 +1,25 @@
+package local.bbsgeoimporter;
+import java.nio.file.*;import java.util.*;import java.util.concurrent.*;import java.util.concurrent.atomic.*;
+final class LiveStartupAcceptance {
+ static void check(boolean b,String m){ImporterAcceptance.check(b,m);}
+ static void boot(Path config,List<GeoImporter.ModSource> sources)throws Exception{var s=new ScanService(config,()->sources,x->{});try{s.startup();s.apply(s.prepare(null,Runnable::run).get());s.request().get(15,TimeUnit.SECONDS);}finally{PerformanceAcceptance.stop(s);}}
+ static void run(Path base)throws Exception{
+ Path a=base.resolve("a"),b=base.resolve("b"),c=base.resolve("c"),config=base.resolve("config");String rel="assets/random/geo/body.geo.json";
+ var shape=com.google.gson.JsonParser.parseString(ImporterAcceptance.GEO).getAsJsonObject();shape.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject().getAsJsonArray("bones").add(com.google.gson.JsonParser.parseString("{name:root,pivot:[0,0,0],cubes:[]} "));shape.addProperty("texture","random:textures/shared.png");String geo=shape.toString();
+ for(Path p:List.of(a,b,c)){ImporterAcceptance.put(p.resolve(rel),geo);ImporterAcceptance.png(p.resolve("assets/random/textures/shared.png"),0xff223344);}
+ var A=ImporterAcceptance.source("rand_a","A",a);var B=ImporterAcceptance.source("rand_b","B",b);var C=ImporterAcceptance.source("rand_c","C",c);
+ // Each container uses its own namespace to avoid an intentionally ambiguous reference.
+ for(var source:List.of(A,B,C)){String id=source.id();Files.writeString(source.roots().get(0).resolve(rel),geo.replace("random:textures",id+":textures"));ImporterAcceptance.png(source.roots().get(0).resolve("assets/"+id+"/textures/shared.png"),0xff223344);}
+ boot(config,List.of(A,B));Set<String> first=Set.copyOf(ImportedModelGroups.modelKeys());String bk=first.stream().filter(k->k.startsWith("B/")).findFirst().orElseThrow();Path bout=ImporterAcceptance.target(config,B.id(),rel);byte[] bytes=Files.readAllBytes(bout);
+ boot(config,List.of(A));check(ImportedModelGroups.modelKeys().size()==1&&ImportedModelGroups.inactive(bk),"unloaded B is inactive while A remains visible");check(Files.exists(bout)&&Arrays.equals(bytes,Files.readAllBytes(bout)),"B historical model file remains untouched");check(!SharedModelAssets.bindingsForTest().containsKey(bk),"unloaded B binding removed independently");
+ Object manager=new Object();var filtered=ImportedModelGroups.filterAvailable(manager,new ArrayList<>(List.of(bk,"B/user/custom","A/user/custom")));check(!filtered.contains(bk)&&filtered.contains("B/user/custom"),"native enumeration filters exact owned key, keeps same-folder user models");
+ BbsCpuAcceptance.run(config.resolve("bbs/assets"),SharedModelAssets.bindingsForTest());
+ boot(config,List.of(A,C));check(ImportedModelGroups.modelKeys().size()==2&&Files.isRegularFile(ImporterAcceptance.target(config,C.id(),rel)),"new C next process automatically created and bound");
+ boot(config,List.of(A,B,C));check(ImportedModelGroups.modelKeys().size()==3&&!ImportedModelGroups.inactive(bk)&&SharedModelAssets.bindingsForTest().containsKey(bk),"reinstalled B restores complete binding");
+ Files.delete(b.resolve(rel));boot(config,List.of(A,B,C));check(ImportedModelGroups.inactive(bk),"Geo removal inside still-loaded Mod withdraws exact source key");
+ Files.writeString(bout,"user modified model");boot(config,List.of(A,C));check(!ImportedModelGroups.inactive(bk)&&Files.readString(bout).equals("user modified model"),"user modified formerly managed key remains native and protected");
+ AtomicInteger reads=new AtomicInteger();var service=new ScanService(base.resolve("once"),()->{reads.incrementAndGet();return List.of(A,C);},x->{});try{Performance.reset();service.startup();check(reads.get()==0,"setup without authoritative resources does not publish historical snapshot");var snapshot=service.prepare(null,Runnable::run).get();service.apply(snapshot);service.request().get(15,TimeUnit.SECONDS);long generation=RuntimeCapture.generation();for(int i=0;i<20;i++){service.startup();service.apply(service.prepare(null,Runnable::run).get());service.request().get();BbsCategoryRefresh.rebuilt();PerformanceAcceptance.call(service,"flush");}check(reads.get()==1&&PerformanceAcceptance.count("startup.scan")==1&&RuntimeCapture.generation()==generation,"20 opens/world/reload events cause exactly one source enumeration and scan");System.out.println("LIVE STARTUP PASS: "+Performance.snapshot());}finally{PerformanceAcceptance.stop(service);}
+ var failed=new ScanService(config,()->{throw new IllegalStateException("discovery unavailable");},x->{});Set<String> before=Set.copyOf(ImportedModelGroups.modelKeys());try{failed.apply(failed.prepare(null,Runnable::run).get());check(ImportedModelGroups.modelKeys().equals(before),"failed discovery is not authoritative empty and cannot withdraw models");}finally{PerformanceAcceptance.stop(failed);}
+ boot(config,List.of());check(ImportedModelGroups.modelKeys().isEmpty(),"authoritative empty source set publishes no managed models");
+ }
+}

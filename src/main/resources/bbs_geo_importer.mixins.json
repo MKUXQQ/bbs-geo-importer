@@ -1,0 +1,24 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "local.bbsgeoimporter.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "local.bbsgeoimporter.mixin.CaptureMixinPlugin",
+  "client": [
+    "ModelWatchMixin",
+    "ModelCategoryMixin",
+    "GeckoRendererMixin",
+    "GeckoModelMixin",
+    "SharedAssetsMixin",
+    "ModelRefreshMixin",
+    "MorphingPanelMixin",
+    "ListPreviewMixin",
+    "FormGridViewportMixin",
+    "VaoOwnershipMixin",
+    "ModelManagementMixin",
+    "SettingsManagementMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
