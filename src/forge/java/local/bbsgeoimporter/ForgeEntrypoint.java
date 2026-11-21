@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class ForgeEntrypoint {
     private static final Queue<Runnable> CLIENT_REFRESHES=new ConcurrentLinkedQueue<>();
     public ForgeEntrypoint() {
-        if(!FMLEnvironment.dist.isClient()) return;
+        if(!FMLEnvironment.dist.isClient()||!ClientBootstrap.claim(true,getClass().getClassLoader())) return;
         var service=new ScanService(FMLPaths.CONFIGDIR.get(),()->{
             try {return (java.util.List<GeoImporter.ModSource>)Class.forName("local.bbsgeoimporter.FabricSources").getMethod("collect").invoke(null);}
             catch(ReflectiveOperationException | LinkageError absent) {return LoaderSources.collect(List.of());}
@@ -34,10 +34,9 @@ public final class ForgeEntrypoint {
                 if(args==null||args.length!=6)throw new UnsupportedOperationException(method.toString());
                 Object manager=args[1];
                 try {
-                    return StartupReload.await(service,ResourceReaders.enumerate(ResourceReaders.create(manager,net.minecraft.server.packs.resources.ResourceProvider.class,net.minecraft.resources.ResourceLocation.class,net.minecraft.server.packs.resources.Resource.class,
-                        "m_213713_","m_215507_","m_215506_"),manager,net.minecraft.server.packs.resources.ResourceManager.class,"m_214159_"),(java.util.concurrent.Executor)args[4],value->{try{return (java.util.concurrent.CompletableFuture<ReloadSnapshot>)net.minecraft.server.packs.resources.PreparableReloadListener.PreparationBarrier.class.getMethod("m_6769_",Object.class).invoke(args[0],value);}catch(ReflectiveOperationException ex){throw new java.util.concurrent.CompletionException(ex);}},(java.util.concurrent.Executor)args[5]);
-                }catch(Exception | LinkageError ex){System.getLogger("bbs_geo_importer").log(System.Logger.Level.ERROR,"Resource capture unavailable",ex);}
-                return java.util.concurrent.CompletableFuture.completedFuture(null);
+                    return StartupReload.await(service,ResourceReaders.platform(manager,net.minecraft.server.packs.resources.ResourceProvider.class,net.minecraft.resources.ResourceLocation.class,net.minecraft.server.packs.resources.Resource.class,net.minecraft.server.packs.resources.ResourceManager.class,net.minecraft.server.packs.PackResources.class,
+                        "m_213713_","m_215507_","m_215506_","m_247173_","m_214159_","m_7536_","m_5542_"),(java.util.concurrent.Executor)args[4],value->{try{return (java.util.concurrent.CompletableFuture<ReloadSnapshot>)net.minecraft.server.packs.resources.PreparableReloadListener.PreparationBarrier.class.getMethod("m_6769_",Object.class).invoke(args[0],value);}catch(ReflectiveOperationException ex){throw new java.util.concurrent.CompletionException(ex);}},(java.util.concurrent.Executor)args[5]);
+                }catch(Exception | LinkageError ex){return java.util.concurrent.CompletableFuture.failedFuture(ex);}
             })));
     }
 }

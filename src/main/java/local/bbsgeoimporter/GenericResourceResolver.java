@@ -42,6 +42,7 @@ final class GenericResourceResolver implements ResourceAssociationResolver {
         if(value.isJsonArray()){int i=0;for(var x:value.getAsJsonArray())walk(def,x,inherited,aliases,pointer+"/"+i++);return;}
         if(!value.isJsonObject())return;
         var o=value.getAsJsonObject();Map<String,JsonElement> local=new HashMap<>(aliases);
+        if(o.has("variations")&&o.get("variations").isJsonArray()&&def.path().matches("(?:resourcepacks/[^/]+/)?assets/[^/]+/bedrock/.+/(?:resolvers|variations)/.+\\.json"))return; // the aspect resolver owns this format, including its layers
         // Paired named properties describe the same instance (fruitModel/fruitTexture, etc.).
         // Short texture ids are resolved only through an actual atlas directory declaration.
         for(var property:o.entrySet())if(property.getKey().endsWith("Model")&&property.getValue().isJsonPrimitive()&&property.getValue().getAsJsonPrimitive().isString()){
@@ -69,7 +70,8 @@ final class GenericResourceResolver implements ResourceAssociationResolver {
         }
         for(String field:List.of("texture","textures","animation","animations","skins"))if(o.has(field)&&!models.isEmpty()&&!(field.equals("texture")&&pointer.contains("/bones/"))) {
             String kind=field.startsWith("texture")||field.equals("skins")?"texture":"animation";
-            String role=field.equals("skins")?"SKIN_VARIANT":o.get(field).isJsonObject()?"NAMED_SLOT":o.get(field).isJsonArray()?"MULTIPLE_REFERENCES":"SINGLE";
+            String role=field.equals("skins")?"SKIN_VARIANT":o.get(field).isJsonObject()&&!DeclaredFrames.object(o.get(field))?"NAMED_SLOT":o.get(field).isJsonArray()?"MULTIPLE_REFERENCES":"SINGLE";
+            if(kind.equals("texture")&&pointer.matches(".*/layers(?:/.*)?"))role="SIMULTANEOUS_OVERLAY";
             for(var model:models){String evidence="json:"+ResourceCatalog.key(def)+"#"+pointer+"/"+field;
                 resolveValue(def,model,o.get(field),kind,local,new HashSet<>(),evidence,role);
             }
@@ -78,6 +80,13 @@ final class GenericResourceResolver implements ResourceAssociationResolver {
         for(var x:o.entrySet())if(!List.of("texture","textures","animation","animations","skins","material_instances").contains(x.getKey()))walk(def,x.getValue(),models,local,pointer+"/"+x.getKey());
     }
     private void resolveValue(ResourceCatalog.Entry def,ResourceCatalog.Entry model,JsonElement value,String kind,Map<String,JsonElement> aliases,Set<String> chain,String evidence,String role){
+        if(kind.equals("texture")&&DeclaredFrames.object(value)){
+            String first=switch(role){case "SINGLE"->DeclaredFrames.BASE;case "SKIN_VARIANT"->DeclaredFrames.SKIN;default->role;};
+            DeclaredFrames.read(value,evidence,first,(ref,where,use,valid)->{
+                if(valid)resolveValue(def,model,new JsonPrimitive(ref),kind,aliases,new HashSet<>(chain),where,use);
+                else require(model,kind,ref,"INVALID",List.of(),where,use);
+            });return;
+        }
         if(value.isJsonObject()){for(var x:value.getAsJsonObject().entrySet())resolveValue(def,model,x.getValue(),kind,aliases,new HashSet<>(chain),evidence+"/"+x.getKey(),role);return;}
         if(value.isJsonArray()){for(var x:value.getAsJsonArray())resolveValue(def,model,x,kind,aliases,new HashSet<>(chain),evidence,role);return;}
         if(!value.isJsonPrimitive()||!value.getAsJsonPrimitive().isString())return;

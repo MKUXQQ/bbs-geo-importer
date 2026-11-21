@@ -24,10 +24,33 @@ final class ModelCompleteness {
         Map<String,String> slots=plan.confirmedSlots();
         for(var p:plan.parts){JsonObject part=new JsonObject();part.addProperty("bone",p.bone());part.addProperty("cube",p.cube());part.addProperty("slot",p.slot());JsonArray faces=new JsonArray();p.faces().forEach(faces::add);part.add("faces",faces);part.addProperty("resource",slots.get(p.slot()));parts.add(part);}
         for(String slot:plan.usedSlots())if(!slots.containsKey(slot)){unresolved=true;reasons.add("UNRESOLVED_MATERIAL_SLOT: "+slot);}
-        long skins=c.requirementsFor(key).stream().filter(r->r.kind().equals("texture")&&r.role().equals("SKIN_VARIANT")&&r.status().equals("FOUND")).flatMap(r->r.candidates().stream()).distinct().count();
-        boolean defaultKnown=resources.size()==1||c.defaultTextures.containsKey(key)&&!c.defaultTextureConflicts.contains(key);
+        long skins=c.requirementsFor(key).stream().filter(r->r.kind().equals("texture")&&DeclaredFrames.firstSkin(r.role())&&r.status().equals("FOUND")).flatMap(r->r.candidates().stream()).distinct().count();
+        JsonObject owner=SharedModelAssets.resourceOwner(state,key);
+        JsonObject record=owner==null?null:owner.getAsJsonObject("files").getAsJsonObject(key.substring(key.indexOf(':')+1));
+        JsonObject binding=record==null?null:record.getAsJsonObject("bindingPlan");
+        SharedModelAssets.Binding actual=null;
+        if(binding!=null&&record.has("target")&&!record.has("inactiveReason")&&ModelManagement.enabled(key.substring(0,key.indexOf(':')))){
+            String target=record.get("target").getAsString();int slash=target.lastIndexOf('/');
+            if(slash>=0)actual=SharedModelAssets.bindingsForTest().get(owner.get("directory").getAsString()+"/"+target.substring(0,slash));
+        }
+        boolean defaultKnown=actual!=null&&actual.texture()!=null;
+        int materialCount=0;if(actual!=null){var applied=actual;materialCount=(int)applied.parts().stream().map(MaterialPlan.Part::slot).distinct().filter(s->!s.isEmpty()&&applied.materials().containsKey(s)).count();}
+        boolean materialUsable=materialCount>0;
+        row.addProperty("baseUsable",defaultKnown);row.addProperty("appliedMaterialSlots",materialCount);
+        String selection=defaultKnown&&binding.has("baseSelection")?binding.get("baseSelection").getAsString():defaultKnown?"PERSISTED_BASE":materialUsable?"MATERIAL_SLOTS_ONLY":"NO_USABLE_BASE";
+        row.addProperty("textureSelection",selection);
+        if(defaultKnown)row.addProperty("baseLink",actual.texture());
         boolean paired=plan.hasSelectors()&&slots.keySet().containsAll(plan.usedSlots())&&plan.parts.stream().allMatch(p->!p.slot().isEmpty()||defaultKnown);
-        boolean complete=!resources.isEmpty()&&published.containsAll(resources)&&!unresolved&&(paired||defaultKnown||skins==resources.size());
+        boolean complete=(defaultKnown||materialUsable)&&!resources.isEmpty()&&published.containsAll(resources)&&!unresolved&&(!plan.hasSelectors()||paired&&materialCount==slots.size());
+        if(binding!=null&&resources.size()>1){
+            Set<String> consumable=new HashSet<>(slots.values());
+            if(defaultKnown&&binding.has("baseResource"))consumable.add(binding.get("baseResource").getAsString());
+            for(var r:c.requirementsFor(key))if(r.status().equals("FOUND")&&DeclaredFrames.firstSkin(r.role()))consumable.addAll(r.candidates());
+            if(!consumable.containsAll(resources)){complete=false;reasons.add("SOME_TEXTURES_NOT_CONSUMED_BY_BASE_MATERIAL_OR_SKIN");}
+        }
+        if(!defaultKnown&&!materialUsable)reasons.add("NO_EXECUTABLE_BASE_OR_SELECTED_MATERIAL");
+        if(selection.equals("DISPLAY_MIRRORED_ATLAS")){complete=false;reasons.add("DISPLAY_ATLAS_MAPPING_NOT_SOURCE_GETTER");}
+        if(c.requirementsFor(key).stream().anyMatch(r->r.role().equals("DISPLAY_FRAME")||DeclaredFrames.role(r.role()))){complete=false;reasons.add("STATIC_FRAME_ONLY; runtime texture cycling is not reproduced");}
         if(resources.size()>1&&!paired&&!defaultKnown&&skins!=resources.size())reasons.add("MULTIPLE_TEXTURES_WITHOUT_PROVEN_PART_OR_SKIN_BINDING");
         if(resources.isEmpty())reasons.add("NO_CONFIRMED_TEXTURE_REFERENCE; filename candidates are diagnostic only");
         plan.unsupported.forEach(reasons::add);
@@ -74,7 +97,7 @@ final class ModelCompleteness {
             String status=failed?"FAILED":missing?"INCOMPLETE":uncertain?"UNRESOLVED":"COMPLETE";
             row.addProperty("status",status);row.addProperty("sourceTexturesFound",textures);row.addProperty("sourceAnimationsFound",animations);
             row.addProperty("animationRequirement",catalog.requirementsFor(key).stream().anyMatch(r->r.kind().equals("animation"))?"DECLARED":animations>0?"ASSOCIATED":"NOT_DECLARED");
-            long skinVariants=catalog.requirementsFor(key).stream().filter(r->r.kind().equals("texture")&&r.role().equals("SKIN_VARIANT")&&r.status().equals("FOUND")).flatMap(r->r.candidates().stream()).distinct().count();
+            long skinVariants=catalog.requirementsFor(key).stream().filter(r->r.kind().equals("texture")&&DeclaredFrames.firstSkin(r.role())&&r.status().equals("FOUND")).flatMap(r->r.candidates().stream()).distinct().count();
             row.addProperty("selectableSkinReferences",skinVariants);
             row.addProperty("textureSelection",textures==0?"NO_CONFIRMED_REFERENCE":defaultKnown?"DEFAULT_CONFIRMED":skinVariants==textures?"EXPLICIT_SKINS_AVAILABLE_NO_DEFAULT":"MULTIPLE_REFERENCES_SEMANTICS_UNRESOLVED");
             if(textures>1&&!defaultKnown&&skinVariants!=textures)row.addProperty("materialSupport","UNSUPPORTED_WITHOUT_PROVEN_FACE_SLOT_BINDING");
@@ -99,7 +122,8 @@ final class ModelCompleteness {
             row.addProperty("sourceMod",model.owner());row.addProperty("sourcePath",model.path());
             row.addProperty("publicationStatus",publication);row.addProperty("runtimeRenderingVerified",false);row.add("dependencies",dependencies);models.add(row);counts.merge(status,1,Integer::sum);
         }
-        JsonObject textureTotals=new JsonObject();for(String s:List.of("FULL_TEXTURES","PARTIAL_TEXTURES","NO_TEXTURES","UNSUPPORTED"))textureTotals.addProperty(s,0);JsonArray failedTextures=new JsonArray();for(var value:models){var r=value.getAsJsonObject();String s=r.get("textureStatus").getAsString();textureTotals.addProperty(s,textureTotals.has(s)?textureTotals.get(s).getAsInt()+1:1);if(!s.equals("FULL_TEXTURES"))failedTextures.add(r.get("model"));}catalog.report.add("textureStatusCounts",textureTotals);catalog.report.add("modelsWithoutFullTextures",failedTextures);
+        JsonObject textureTotals=new JsonObject();for(String s:List.of("FULL_TEXTURES","PARTIAL_TEXTURES","NO_TEXTURES","UNSUPPORTED"))textureTotals.addProperty(s,0);JsonArray failedTextures=new JsonArray();int bases=0,materialOnly=0;for(var value:models){var r=value.getAsJsonObject();String s=r.get("textureStatus").getAsString();textureTotals.addProperty(s,textureTotals.get(s).getAsInt()+1);if(!s.equals("FULL_TEXTURES"))failedTextures.add(r.get("model"));if(r.get("baseUsable").getAsBoolean())bases++;else if(r.get("appliedMaterialSlots").getAsInt()>0)materialOnly++;}catalog.report.add("textureStatusCounts",textureTotals);catalog.report.add("modelsWithoutFullTextures",failedTextures);
+        JsonObject coverage=new JsonObject();coverage.addProperty("primaryModels",models.size());coverage.addProperty("baseUsable",bases);coverage.addProperty("materialOnly",materialOnly);coverage.addProperty("neither",models.size()-bases-materialOnly);catalog.report.add("primaryBindingCoverage",coverage);
         catalog.report.add("models",models);JsonObject totals=new JsonObject();counts.forEach(totals::addProperty);catalog.report.add("modelCompleteness",totals);
     }
 }

@@ -3,7 +3,7 @@ loaderVersion="[47,)"
 license="MIT"
 [[mods]]
 modId="bbs_geo_importer"
-version="1.5.20"
+version="1.5.22"
 displayName="BBS Geo Model Importer"
 description="Discover Geo resources with evidence-based dependency association and protected updates."
 [[dependencies.bbs_geo_importer]]

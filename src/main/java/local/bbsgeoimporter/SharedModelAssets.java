@@ -5,7 +5,7 @@ import java.util.*;
 /** Optional BBS bridge. Only keys owned by the importer are augmented. No BBS classes are linked here. */
 public final class SharedModelAssets {
     record Binding(List<String> animations,String texture,Map<String,String> materials,List<MaterialPlan.Part> parts) {}
-    private static final int BINDING_SCHEMA=2;
+    private static final int BINDING_SCHEMA=3;
     static boolean planReusable(JsonObject record){JsonObject plan=record.getAsJsonObject("bindingPlan");return plan!=null&&plan.has("schema")&&plan.get("schema").getAsInt()==BINDING_SCHEMA&&plan.has("geometrySourceHash")&&record.has("sourceHash")&&plan.get("geometrySourceHash").equals(record.get("sourceHash"));}
     private static volatile Map<String,Binding> bindings=Map.of();
     private static volatile Map<String,String> revisions=Map.of();
@@ -51,28 +51,67 @@ public final class SharedModelAssets {
                 String model=record.has("modelSource")?record.get("modelSource").getAsString():modItem.getKey()+":"+item.getKey(),target=record.get("target").getAsString();int slash=target.lastIndexOf('/');if(slash<0)continue;
                 if(only!=null&&!only.contains(model))continue;
                 if(!ModelManagement.enabled(modItem.getKey())){String key=dir+"/"+target.substring(0,slash);Binding existing=bindings.get(key);if(existing!=null){next.put(key,existing);nextRevisions.put(key,revisions.getOrDefault(key,""));}continue;}
-                List<String> anims=new ArrayList<>(),textures=new ArrayList<>();Map<String,String> textureLinks=new HashMap<>();Set<String> overlays=new HashSet<>();for(var req:catalog.requirementsFor(model))if(req.role().equals("SIMULTANEOUS_OVERLAY"))overlays.addAll(req.candidates());
+                List<String> anims=new ArrayList<>();Map<String,String> textureLinks=new HashMap<>();Set<String> overlays=new HashSet<>();for(var req:catalog.requirementsFor(model))if(req.role().equals("SIMULTANEOUS_OVERLAY"))overlays.addAll(req.candidates());
                 for(var edge:catalog.bundles.getOrDefault(model,List.of())){
                     var provider=resourceOwner(state,edge.resource());var r=resourceRecord(state,edge.resource());if(provider==null||r==null||!List.of("imported","updated","unchanged").contains(verified.check(provider.get("directory").getAsString(),r)))continue;
                     String link="models/"+provider.get("directory").getAsString()+"/"+r.get("target").getAsString();
                     if(r.get("type").getAsString().equals("animation"))anims.add(link);
-                    if(r.get("type").getAsString().equals("texture")){if(!overlays.contains(edge.resource()))textures.add(link);textureLinks.put(edge.resource(),link);}
+                    if(r.get("type").getAsString().equals("texture"))textureLinks.put(edge.resource(),link);
                 }
-                var declared=catalog.requirementsFor(model).stream().filter(r->r.kind().equals("texture")&&!r.role().equals("SKIN_VARIANT")&&!r.role().equals("NAMED_SLOT")&&!r.role().equals("SIMULTANEOUS_OVERLAY")&&r.evidence().startsWith("json:"+model+"#")).toList();
+                var requirements=catalog.requirementsFor(model).stream().filter(r->r.kind().equals("texture")).toList();
+                var declared=requirements.stream().filter(r->!DeclaredFrames.firstSkin(r.role())&&!Set.of("NAMED_SLOT","SIMULTANEOUS_OVERLAY",DeclaredFrames.MEMBER).contains(r.role())&&r.evidence().startsWith("json:"+model+"#")).toList();
                 Set<String> direct=new HashSet<>();declared.stream().filter(r->r.status().equals("FOUND")).forEach(r->direct.addAll(r.candidates()));
                 boolean explicit=!declared.isEmpty(),skin=record.has("textureSource");
                 String preferred=skin?record.get("textureSource").getAsString():explicit?declared.stream().allMatch(r->r.status().equals("FOUND"))&&direct.size()==1?direct.iterator().next():null:catalog.defaultTextureConflicts.contains(model)?null:catalog.defaultTextures.get(model);
-                String texture=preferred!=null?textureLinks.get(preferred):explicit||skin?null:new HashSet<>(textures).size()==1?textures.get(0):null;
+                Set<String> auxiliary=new HashSet<>(overlays);
+                requirements.stream().filter(r->r.role().equals("NAMED_SLOT")).forEach(r->auxiliary.addAll(r.candidates()));
+                String selection=skin?"SELECTED_SKIN":"SOURCE_DEFAULT";
+                var firstFrames=requirements.stream().filter(r->r.role().equals(DeclaredFrames.BASE)).toList();
+                if(!skin&&!explicit&&!firstFrames.isEmpty()){
+                    var first=firstFrames.stream().flatMap(r->r.candidates().stream()).distinct().toList();
+                    preferred=firstFrames.stream().allMatch(r->r.status().equals("FOUND"))&&first.size()==1?first.get(0):null;
+                }
+                if(!skin&&!explicit&&firstFrames.isEmpty()&&preferred==null){
+                    boolean unresolvedBase=requirements.stream().anyMatch(r->!r.status().equals("FOUND")&&!DeclaredFrames.firstSkin(r.role())&&!Set.of("NAMED_SLOT","SIMULTANEOUS_OVERLAY","DISPLAY_FRAME",DeclaredFrames.MEMBER).contains(r.role()));
+                    if(!unresolvedBase){
+                        SortedSet<String> skins=new TreeSet<>(),frames=new TreeSet<>();
+                        for(var r:requirements)if(r.status().equals("FOUND")&&(DeclaredFrames.firstSkin(r.role())||r.role().equals("DISPLAY_FRAME")))for(String id:r.candidates())
+                            if(textureLinks.containsKey(id)&&!auxiliary.contains(id)&&displayEligible(id))(r.role().equals("DISPLAY_FRAME")?frames:skins).add(id);
+                        if(!skins.isEmpty()){
+                            var exact=skins.stream().filter(id->stem(id).equals(stem(model))).toList();
+                            preferred=exact.size()==1?exact.get(0):skins.first();
+                            selection=exact.size()==1?"DISPLAY_MATCHING_SKIN":"DISPLAY_STABLE_SKIN";
+                        }else if(!frames.isEmpty()){preferred=frames.first();selection="DISPLAY_STATIC_FRAME";}
+                        else if(!catalog.defaultTextureConflicts.contains(model)){
+                            var ids=textureLinks.keySet().stream().filter(id->!auxiliary.contains(id)&&displayEligible(id)).toList();
+                            if(ids.size()==1){preferred=ids.get(0);selection="SINGLE_PUBLISHED_TEXTURE";}
+                        }
+                    }
+                }
+                String texture=preferred!=null&&!auxiliary.contains(preferred)?textureLinks.get(preferred):null;
+                String selectedId=preferred;
+                if(texture!=null&&requirements.stream().anyMatch(r->(skin?r.role().equals(DeclaredFrames.SKIN):r.role().equals(DeclaredFrames.BASE))&&r.candidates().contains(selectedId)))
+                    selection=skin?"SKIN_DECLARED_FIRST_FRAME":"DISPLAY_DECLARED_FIRST_FRAME";
+                if(texture!=null&&requirements.stream().anyMatch(r->r.evidence().startsWith("mirror_atlas:")))selection=selection.equals("DISPLAY_STATIC_FRAME")?"DISPLAY_MIRRORED_FRAME":"DISPLAY_MIRRORED_ATLAS";
                 MaterialPlan plan=plans.computeIfAbsent(model,k->MaterialPlan.read(catalog,k));Map<String,String> materials=new TreeMap<>();
                 plan.confirmedSlots().forEach((slot,resource)->{String link=textureLinks.get(resource);if(link!=null)materials.put(slot,link);});
                 Binding binding=new Binding(anims.stream().distinct().sorted().toList(),texture,Map.copyOf(materials),plan.hasSelectors()?plan.exportedParts():List.of());
-                record.add("bindingPlan",encode(binding,model,record,catalog,state,verified));
+                var encoded=encode(binding,model,record,catalog,state,verified);
+                var sequence=DeclaredFrames.plan(requirements);if(!sequence.isEmpty())encoded.add("declaredTextureFrames",sequence);
+                var savedSkins=encoded.getAsJsonArray("skins");Set<String> saved=new HashSet<>();savedSkins.forEach(v->saved.add(v.getAsJsonObject().get("resource").getAsString()));
+                for(var r:requirements)if(r.role().equals(DeclaredFrames.SKIN)&&r.status().equals("FOUND"))for(var id:r.candidates())if(saved.add(id)){
+                    JsonObject s=new JsonObject();s.addProperty("resource",id);s.addProperty("evidence",r.evidence());if(textureLinks.containsKey(id))s.addProperty("link",textureLinks.get(id));savedSkins.add(s);
+                }
+                if(texture!=null){encoded.addProperty("baseSelection",selection);encoded.addProperty("baseResource",preferred);}
+                record.add("bindingPlan",encoded);
                 String bbsKey=dir+"/"+target.substring(0,slash);next.put(bbsKey,binding);nextRevisions.put(bbsKey,revision(record));
             }
         }
         if(only==null)bindings=Map.copyOf(next);else{Map<String,Binding> merged=new HashMap<>(bindings);for(var modItem:state.getAsJsonObject("mods").entrySet()){String ownerDir=modItem.getValue().getAsJsonObject().get("directory").getAsString();for(var item:modItem.getValue().getAsJsonObject().getAsJsonObject("files").entrySet()){JsonObject r=item.getValue().getAsJsonObject();if(!r.has("modelSource")||!only.contains(r.get("modelSource").getAsString()))continue;String path=r.get("target").getAsString();int slash=path.lastIndexOf('/');if(slash>0)merged.remove(ownerDir+"/"+path.substring(0,slash));}}merged.putAll(next);bindings=Map.copyOf(merged);}
         Map<String,String> mergedRevisions=only==null?new HashMap<>():new HashMap<>(revisions);mergedRevisions.putAll(nextRevisions);revisions=Map.copyOf(mergedRevisions);refreshPreviewTokens();Performance.end("bindings.update",timing);
     }
+    private static String stem(String id){String name=id.substring(id.lastIndexOf('/')+1);return name.replaceFirst("(?:\\.geo\\.json|\\.png|\\.json)$","");}
+    static boolean displayEligible(String id){String path=id.substring(id.indexOf(':')+1);return !path.matches(".*/(?:gui|screens|icons|spell_icons|icon)/.*")&&!stem(id).matches(".*(?:^|_)(?:glow|glowing|emissive|eyes|overlay|icon)(?:_|$).*");}
     private static JsonObject encode(Binding binding,String model,JsonObject geo,ResourceCatalog catalog,JsonObject state,Verification verified){
         JsonObject plan=new JsonObject();plan.addProperty("schema",BINDING_SCHEMA);plan.addProperty("modelKey",model);plan.addProperty("geometrySourceHash",geo.has("sourceHash")?geo.get("sourceHash").getAsString():"");
         JsonArray animations=new JsonArray();binding.animations().forEach(animations::add);plan.add("animations",animations);if(binding.texture()!=null)plan.addProperty("baseTexture",binding.texture());JsonObject materials=new JsonObject();binding.materials().forEach(materials::addProperty);plan.add("materials",materials);JsonArray parts=new JsonArray();for(var p:binding.parts()){JsonObject row=new JsonObject();row.addProperty("bone",p.bone());row.addProperty("cube",p.cube());row.addProperty("slot",p.slot());JsonArray faces=new JsonArray();p.faces().forEach(faces::add);row.add("faces",faces);parts.add(row);}plan.add("parts",parts);
@@ -88,7 +127,7 @@ public final class SharedModelAssets {
             for(var item:mod.getAsJsonObject("files").entrySet()){
                 JsonObject geo=item.getValue().getAsJsonObject();if(geo.has("inactiveReason"))continue;if(!geo.has("modelSource")||!geo.has("bindingPlan"))continue;
                 String target=geo.get("target").getAsString();if(!List.of("imported","updated","unchanged").contains(verified.check(dir,geo)))continue;
-                JsonObject plan=geo.getAsJsonObject("bindingPlan");if(!plan.has("schema")||plan.get("schema").getAsInt()!=BINDING_SCHEMA||!plan.has("geometrySourceHash")||!geo.has("sourceHash")||!plan.get("geometrySourceHash").getAsString().equals(geo.get("sourceHash").getAsString()))continue;
+                JsonObject plan=geo.getAsJsonObject("bindingPlan");if(!plan.has("schema")||!Set.of(2,BINDING_SCHEMA).contains(plan.get("schema").getAsInt())||!plan.has("geometrySourceHash")||!geo.has("sourceHash")||!plan.get("geometrySourceHash").getAsString().equals(geo.get("sourceHash").getAsString()))continue;
                 // A failed dependency must not discard independently verified base/material links.
                 // Keep the persistent complete plan intact so repaired outputs recover on the next bootstrap.
                 Set<String> validLinks=new HashSet<>();JsonObject sources=plan.getAsJsonObject("resources");if(sources==null)continue;

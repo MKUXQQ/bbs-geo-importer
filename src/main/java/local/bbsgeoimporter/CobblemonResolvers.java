@@ -6,25 +6,32 @@ import java.util.*;
 final class CobblemonResolvers {
     record Rule(ResourceCatalog.Entry source,int order,Set<String> aspects,JsonObject value) {}
     private final Map<String,List<ResourceCatalog.Entry>> lookup=new HashMap<>();
+    private final Map<String,String> nestedRoots=new HashMap<>();
+    private String pack(ResourceCatalog.Entry e){int i=e.path().indexOf("/assets/");if(i<0)return "";String prefix=e.path().substring(0,i+1);return nestedRoots.containsKey(e.owner()+":"+prefix)?prefix:"";}
+    private static String container(ResourceCatalog c,ResourceCatalog.Entry e){var id=c.identities.get(ResourceCatalog.key(e));return id==null?"":id.get("physicalContainer").getAsString();}
     static void analyze(ResourceCatalog c) {new CobblemonResolvers().run(c);}
     private void run(ResourceCatalog c) {
+        for(var files:c.entries.values())for(var e:files.values())if(e.path().matches("resourcepacks/[^/]+/pack\\.mcmeta"))nestedRoots.put(e.owner()+":"+e.path().substring(0,e.path().lastIndexOf('/')+1),container(c,e));
         for(var files:c.entries.values())for(var e:files.values()) {
-            String[] parts=e.path().split("/",3);if(parts.length!=3||!parts[0].equals("assets"))continue;
+            String prefix=pack(e);
+            if(!prefix.isEmpty()&&!Objects.equals(container(c,e),nestedRoots.get(e.owner()+":"+prefix)))continue;
+            String[] parts=e.path().substring(prefix.length()).split("/",3);if(parts.length!=3||!parts[0].equals("assets"))continue;
             String id=null;
             if(e.kind().equals("texture"))id="texture:"+parts[1]+":"+parts[2];
             if(e.kind().equals("geo")&&parts[2].startsWith("bedrock/")){String filename=e.path().substring(e.path().lastIndexOf('/')+1);id="geo:"+parts[1]+":"+filename.substring(0,filename.length()-5);}
-            if(id!=null)lookup.computeIfAbsent(id,k->new ArrayList<>()).add(e);
+            if(id!=null)lookup.computeIfAbsent(prefix.isEmpty()?id:e.owner()+":"+prefix+"|"+id,k->new ArrayList<>()).add(e);
         }
         Map<String,List<Rule>> groups=new TreeMap<>();
         for(var files:c.entries.values()) for(var e:files.values()) {
-            if(!e.path().matches("assets/[^/]+/bedrock/.+/(?:resolvers|variations)/.+\\.json"))continue;
+            String prefix=pack(e);
+            if(!e.path().substring(prefix.length()).matches("assets/[^/]+/bedrock/.+/(?:resolvers|variations)/.+\\.json")||!prefix.isEmpty()&&!Objects.equals(container(c,e),nestedRoots.get(e.owner()+":"+prefix)))continue;
             try {
                 var o=JsonParser.parseString(AnalysisInputs.text(e.file())).getAsJsonObject();
                 String species=o.has("species")?o.get("species").getAsString():o.has("name")?o.get("name").getAsString():e.path(); int order=o.has("order")?o.get("order").getAsInt():0;
                 for(var v:o.getAsJsonArray("variations")) {
                     var value=v.getAsJsonObject(); Set<String> aspects=new TreeSet<>();
                     if(value.has("aspects"))for(var a:value.getAsJsonArray("aspects"))aspects.add(a.getAsString());
-                    groups.computeIfAbsent(e.owner()+":"+species,k->new ArrayList<>()).add(new Rule(e,order,Set.copyOf(aspects),value));
+                    groups.computeIfAbsent(e.owner()+":"+prefix+"|"+species,k->new ArrayList<>()).add(new Rule(e,order,Set.copyOf(aspects),value));
                 }
             }catch(Exception ex){c.event(e,"cobblemon_resolver_failed",ex.toString());}
         }
@@ -37,7 +44,7 @@ final class CobblemonResolvers {
     private void resolveModel(ResourceCatalog c,List<Rule> rules,List<Rule> modelRules,Rule modelRule) {
         String model=modelRule.value().get("model").getAsString();var geo=find(c,modelRule.source(),model,true);
         if(geo==null)return;
-        List<Rule> textures=rules.stream().filter(r->r.value().has("texture")&&r.value().get("texture").isJsonPrimitive()&&r.value().getAsJsonPrimitive("texture").isString()).toList();
+        List<Rule> textures=rules.stream().filter(r->r.value().has("texture")&&(DeclaredFrames.object(r.value().get("texture"))||r.value().get("texture").isJsonPrimitive()&&r.value().getAsJsonPrimitive("texture").isString())).toList();
         Rule base=mostSpecificApplicable(textures,modelRule.aspects());
         if(base==null){c.event(modelRule.source(),"cobblemon_default_texture_missing","No literal texture rule applies to model aspects "+new TreeSet<>(modelRule.aspects()));return;}
         String poser=null;Rule poserRule=null;
@@ -46,9 +53,9 @@ final class CobblemonResolvers {
         boolean inheritedGeometry=modelRules.stream().anyMatch(r->r!=modelRule&&r.value().get("model").getAsString().equals(model)&&modelRule.aspects().containsAll(r.aspects())&&r.aspects().size()<modelRule.aspects().size());
         if(!inheritedGeometry)publishTexture(c,geo,base,"DEFAULT",modelRule);
         if(inheritedGeometry||modelRules.stream().filter(r->r.value().get("model").getAsString().equals(model)).count()>1||!modelRule.source().path().contains("/pokemon/"))publishTexture(c,geo,base,"SKIN_VARIANT",modelRule);
-        Set<String> emitted=new HashSet<>();emitted.add(base.value().get("texture").getAsString());
+        Set<JsonElement> emitted=new HashSet<>();emitted.add(base.value().get("texture"));
         for(var skin:textures){
-            if(skin==base||skin.aspects().isEmpty()||conflictsWithOtherModel(skin,modelRule,modelRules)||!emitted.add(skin.value().get("texture").getAsString()))continue;
+            if(skin==base||skin.aspects().isEmpty()||conflictsWithOtherModel(skin,modelRule,modelRules)||!emitted.add(skin.value().get("texture")))continue;
             publishTexture(c,geo,skin,"SKIN_VARIANT",modelRule);
         }
         for(var r:rules)if(!conflictsWithOtherModel(r,modelRule,modelRules)&&r.value().has("layers")&&r.value().get("layers").isJsonArray()&&!r.value().getAsJsonArray("layers").isEmpty()){
@@ -60,9 +67,10 @@ final class CobblemonResolvers {
         }
     }
     private void collectLayers(ResourceCatalog c,ResourceCatalog.Entry geo,ResourceCatalog.Entry definition,JsonElement value,String evidence){
-        if(value.isJsonArray()){int i=0;for(var v:value.getAsJsonArray())collectLayers(c,geo,definition,v,evidence+"/"+i++);}
+        if(DeclaredFrames.object(value)){DeclaredFrames.read(value,evidence,"SIMULTANEOUS_OVERLAY",(ref,where,role,valid)->frame(c,geo,definition,ref,where,role,valid));}
+        else if(value.isJsonArray()){int i=0;for(var v:value.getAsJsonArray())collectLayers(c,geo,definition,v,evidence+"/"+i++);}
         else if(value.isJsonObject()){for(var entry:value.getAsJsonObject().entrySet())if(entry.getKey().equals("texture")||entry.getKey().equals("frames"))collectLayers(c,geo,definition,entry.getValue(),evidence+"/"+entry.getKey());}
-        else if(value.isJsonPrimitive()&&value.getAsJsonPrimitive().isString()){var png=find(c,definition,value.getAsString(),false);if(png!=null)c.dependency(geo,"texture",value.getAsString(),"FOUND",List.of(png),evidence,"SIMULTANEOUS_OVERLAY");}
+        else if(value.isJsonPrimitive()&&value.getAsJsonPrimitive().isString()){frame(c,geo,definition,value.getAsString(),evidence,"SIMULTANEOUS_OVERLAY",true);}
     }
     private static Rule mostSpecificApplicable(List<Rule> textures,Set<String> modelAspects){
         Rule chosen=null;
@@ -76,15 +84,24 @@ final class CobblemonResolvers {
         return false;
     }
     private void publishTexture(ResourceCatalog c,ResourceCatalog.Entry geo,Rule texture,String role,Rule model){
-        String ref=texture.value().get("texture").getAsString();var png=find(c,texture.source(),ref,false);
-        if(png==null)return;
         String evidence="cobblemon_resolver:"+ResourceCatalog.key(model.source())+";texture="+ResourceCatalog.key(texture.source())+";modelAspects="+new TreeSet<>(model.aspects())+";textureAspects="+new TreeSet<>(texture.aspects());
+        JsonElement declaration=texture.value().get("texture");
+        if(DeclaredFrames.object(declaration)){
+            DeclaredFrames.read(declaration,evidence,role.equals("DEFAULT")?DeclaredFrames.BASE:DeclaredFrames.SKIN,
+                (ref,where,use,valid)->frame(c,geo,texture.source(),ref,where,use,valid));return;
+        }
+        String ref=declaration.getAsString();var png=find(c,texture.source(),ref,false);
+        if(png==null){c.dependency(geo,"texture",ref,"UNRESOLVED",List.of(),"resolver:"+ResourceCatalog.key(texture.source()),role);return;}
         String modelKey=ResourceCatalog.key(geo),resourceKey=ResourceCatalog.key(png);
         var edges=c.bundles.get(modelKey);var edge=new ResourceCatalog.Edge(modelKey,resourceKey,evidence);if(!edges.contains(edge))edges.add(edge);
         if(role.equals("SKIN_VARIANT")){var requirement=new GenericResourceResolver.Requirement(modelKey,"texture",ref,"FOUND",List.of(resourceKey),evidence,role);if(!c.requirements.contains(requirement))c.requirements.add(requirement);return;}
         if(c.defaultTextureConflicts.contains(modelKey))return;
         String previous=c.defaultTextures.putIfAbsent(modelKey,resourceKey);
         if(previous!=null&&!previous.equals(resourceKey)){c.defaultTextures.remove(modelKey);c.defaultTextureConflicts.add(modelKey);c.event(geo,"cobblemon_default_conflict","Multiple most-specific default texture rules apply");}
+    }
+    private void frame(ResourceCatalog c,ResourceCatalog.Entry geo,ResourceCatalog.Entry definition,String ref,String evidence,String role,boolean valid){
+        var png=valid?find(c,definition,ref,false):null;
+        c.dependency(geo,"texture",ref,!valid?"INVALID":png==null?"UNRESOLVED":"FOUND",png==null?List.of():List.of(png),evidence,role);
     }
     private Map<String,ResourceCatalog.Entry> javaOwner;
     private final Map<String,org.objectweb.asm.tree.ClassNode> javaNodes=new HashMap<>();
@@ -169,7 +186,9 @@ final class CobblemonResolvers {
     }
     ResourceCatalog.Entry find(ResourceCatalog c,ResourceCatalog.Entry source,String ref,boolean model) {
         int colon=ref.indexOf(':');if(colon<1){c.event(source,"cobblemon_reference_unresolved",ref);return null;}
-        List<ResourceCatalog.Entry> found=lookup.getOrDefault((model?"geo:":"texture:")+ref,List.of());
+        String id=(model?"geo:":"texture:")+ref,prefix=pack(source);
+        List<ResourceCatalog.Entry> found=lookup.getOrDefault(prefix.isEmpty()?id:source.owner()+":"+prefix+"|"+id,List.of());
+        if(found.isEmpty()&&!prefix.isEmpty()&&!model){String physical=container(c,source);if(!physical.isEmpty())found=lookup.getOrDefault(id,List.of()).stream().filter(e->e.owner().equals(source.owner())&&physical.equals(container(c,e))).toList();}
         if(found.size()==1)return found.get(0);
         c.event(source,found.isEmpty()?"cobblemon_reference_unresolved":"cobblemon_reference_ambiguous",ref);return null;
     }

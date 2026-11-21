@@ -433,7 +433,7 @@ public final class GeoImporter {
             }catch(Exception ex){catalog.event(model,"dependency_failed",edge.resource()+": "+ex);}
         }
         Set<String> skins=new TreeSet<>();
-        for(var req:catalog.requirementsFor(ResourceCatalog.key(model)))if(req.kind().equals("texture")&&req.role().equals("SKIN_VARIANT")&&req.status().equals("FOUND"))skins.addAll(req.candidates());
+        for(var req:catalog.requirementsFor(ResourceCatalog.key(model)))if(req.kind().equals("texture")&&DeclaredFrames.firstSkin(req.role())&&req.status().equals("FOUND"))skins.addAll(req.candidates());
         for(String skin:skins){
             var provider=SharedModelAssets.resourceOwner(state,skin);var texture=SharedModelAssets.resourceRecord(state,skin);
             if(provider==null||!List.of("imported","updated","unchanged").contains(SharedModelAssets.verifyOutput(models,provider.get("directory").getAsString(),texture)))continue;

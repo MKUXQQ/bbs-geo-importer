@@ -5,17 +5,28 @@ import java.util.*;
 /** Uses public resource-provider methods, never concrete reload-manager internals. */
 public final class ResourceReaders {
     public static EffectiveResources.Reader create(Object manager,Class<?> provider,Class<?> id,Class<?> resource,String get,String open,String pack)throws Exception {
-        Method lookup=provider.getMethod(get,id),stream=resource.getMethod(open),supplier=resource.getMethod(pack);
+        Method source=method(resource,"m_247173_","method_45304","source");
+        return create(manager,provider.getMethod(get,id),id,resource.getMethod(open),resource.getMethod(pack),source,method(source.getReturnType(),"m_5542_","method_14409","packId"));
+    }
+    public static EffectiveResources.Reader platform(Object manager,Class<?> provider,Class<?> id,Class<?> resource,Class<?> managerType,Class<?> packType,String get,String open,String supplier,String source,String list,String listPacks,String packId)throws Exception{
+        Method winning=resource.getMethod(source),identity=packType.getMethod(packId);
+        if(winning.getReturnType()!=packType)throw new NoSuchMethodException(winning.toString());
+        var reader=create(manager,provider.getMethod(get,id),id,resource.getMethod(open),resource.getMethod(supplier),winning,identity);
+        return enumerate(reader,manager,managerType,list,managerType.getMethod(listPacks),identity);
+    }
+    private static Method method(Class<?> type,String... names)throws NoSuchMethodException{
+        for(String name:names)try{return type.getMethod(name);}catch(NoSuchMethodException ignored){}
+        throw new NoSuchMethodException(type.getName()+Arrays.toString(names));
+    }
+    private static EffectiveResources.Reader create(Object manager,Method lookup,Class<?> id,Method stream,Method supplier,Method winningPack,Method packId)throws Exception{
         Constructor<?> identifier=id.getConstructor(String.class);
-        Method source;try{source=resource.getMethod("m_247173_");}catch(NoSuchMethodException ex){source=resource.getMethod("source");}
-        Method winningPack=source;
         return new EffectiveResources.Reader(){
             final Map<Object,String> packVersions=new IdentityHashMap<>();
             final Map<java.nio.file.Path,String> checked=new HashMap<>();
             Object lookup(String address)throws Exception{return ((Optional<?>)lookup.invoke(manager,identifier.newInstance(address))).orElse(null);}
             public String version(String address)throws Exception{
                 Object value=lookup(address);if(value==null)return null;Object winner=winningPack.invoke(value);
-                if(!packVersions.containsKey(winner)){StringBuilder data=new StringBuilder();String version=null;try{if(packIdentity(winner,data,checked))version=GeoImporter.hash(data.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception ignored){}packVersions.put(winner,version);}
+                if(!packVersions.containsKey(winner)){StringBuilder data=new StringBuilder();String version=null;try{if(packIdentity(winner,packId,data,checked))version=GeoImporter.hash(data.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception ignored){}packVersions.put(winner,version);}
                 return packVersions.get(winner);
             }
             public ResourceEvidence.Snapshot read(long generation,String address)throws Exception{
@@ -30,12 +41,17 @@ public final class ResourceReaders {
         };
     }
     public static EffectiveResources.Reader enumerate(EffectiveResources.Reader reader,Object manager,Class<?> managerType,String name)throws Exception{
+        Method packs=null,key=null;
+        try{packs=method(managerType,"m_7536_","method_29213","listPacks");var generic=(ParameterizedType)packs.getGenericReturnType();key=method((Class<?>)generic.getActualTypeArguments()[0],"m_5542_","method_14409","packId");}catch(ReflectiveOperationException|ClassCastException ignored){}
+        return enumerate(reader,manager,managerType,name,packs,key);
+    }
+    private static EffectiveResources.Reader enumerate(EffectiveResources.Reader reader,Object manager,Class<?> managerType,String name,Method packs,Method key)throws Exception{
         Method list=managerType.getMethod(name,String.class,java.util.function.Predicate.class);
         return new EffectiveResources.Reader(){
             public ResourceEvidence.Snapshot read(long g,String a)throws Exception{return reader.read(g,a);}
             public String version(String a)throws Exception{return reader.version(a);}
             public Object identity(){return manager;}
-            public String fingerprint()throws Exception{try{return packFingerprint(manager,managerType);}catch(Exception ex){return null;}}
+            public String fingerprint()throws Exception{try{return packs==null||key==null?null:packFingerprint(manager,packs,key);}catch(Exception ex){return null;}}
             public Set<String> addresses()throws Exception{return addresses(Set.of("geo","models","textures","animations","bedrock"));}
             public Set<String> addresses(Set<String> prefixes)throws Exception{
                 Set<String> values=new TreeSet<>();java.util.function.Predicate<Object> filter=id->{String s=id.toString().toLowerCase(Locale.ROOT);return s.endsWith(".json")||s.endsWith(".png");};
@@ -75,15 +91,14 @@ public final class ResourceReaders {
         try{values.add(ResourceEvidence.address(path.substring(7,slash)+":"+path.substring(slash+1)));}catch(IllegalArgumentException invalid){/* Invalid paths cannot be requested from the active manager. */}
     }
     private ResourceReaders(){}
-    private static String packFingerprint(Object manager,Class<?> type)throws Exception{
-        Method method;try{method=type.getMethod("m_7536_");}catch(NoSuchMethodException ex){method=type.getMethod("listPacks");}
+    private static String packFingerprint(Object manager,Method method,Method id)throws Exception{
         StringBuilder b=new StringBuilder();Map<java.nio.file.Path,String> checked=new HashMap<>();
-        try(var packs=(java.util.stream.Stream<?>)method.invoke(manager)){for(Object pack:packs.toList())if(!packIdentity(pack,b,checked))return null;}
+        try(var packs=(java.util.stream.Stream<?>)method.invoke(manager)){for(Object pack:packs.toList())if(!packIdentity(pack,id,b,checked))return null;}
         return GeoImporter.hash(b.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
-    private static boolean packIdentity(Object pack,StringBuilder b,Map<java.nio.file.Path,String> checked)throws Exception{
-        Class<?> api=Class.forName("net.minecraft.server.packs.PackResources");Method id;try{id=api.getMethod("m_5542_");}catch(NoSuchMethodException ex){id=api.getMethod("packId");}b.append(pack.getClass().getName()).append('|').append(id.invoke(pack)).append('\n');
-        boolean known=false;for(Class<?> c=pack.getClass();c!=null;c=c.getSuperclass())for(var f:c.getDeclaredFields()){if(java.lang.reflect.Modifier.isStatic(f.getModifiers()))continue;f.setAccessible(true);Object value=f.get(pack);List<java.nio.file.Path> paths=new ArrayList<>();if(value instanceof java.nio.file.Path p)paths.add(p);else if(value instanceof java.io.File p)paths.add(p.toPath());else if(value instanceof List<?> list){for(Object entry:list){if(entry instanceof java.nio.file.Path p)paths.add(p);else if(api.isInstance(entry)){if(!packIdentity(entry,b,checked))return false;known=true;}}}
+    private static boolean packIdentity(Object pack,Method id,StringBuilder b,Map<java.nio.file.Path,String> checked)throws Exception{
+        Class<?> api=id.getDeclaringClass();b.append(pack.getClass().getName()).append('|').append(id.invoke(pack)).append('\n');
+        boolean known=false;for(Class<?> c=pack.getClass();c!=null;c=c.getSuperclass())for(var f:c.getDeclaredFields()){if(java.lang.reflect.Modifier.isStatic(f.getModifiers()))continue;f.setAccessible(true);Object value=f.get(pack);List<java.nio.file.Path> paths=new ArrayList<>();if(value instanceof java.nio.file.Path p)paths.add(p);else if(value instanceof java.io.File p)paths.add(p.toPath());else if(value instanceof List<?> list){for(Object entry:list){if(entry instanceof java.nio.file.Path p)paths.add(p);else if(api.isInstance(entry)){if(!packIdentity(entry,id,b,checked))return false;known=true;}}}
             for(var p:paths){String fp=checked.get(p);if(fp==null){fp=SourceFingerprint.cachedRoot(p);checked.put(p,fp);}b.append(fp).append('\n');known=true;}
         }return known; // Unknown/generated packs are always recaptured, never trusted by pack name alone.
     }

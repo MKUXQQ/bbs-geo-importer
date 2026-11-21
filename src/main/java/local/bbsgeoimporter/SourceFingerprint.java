@@ -4,7 +4,7 @@ import java.util.*;
 import java.security.*;
 /** Content fingerprints are computed on the IO worker, never the client thread. */
 final class SourceFingerprint {
-    static final String PARSER_SCHEMA="1520";
+    static final String PARSER_SCHEMA="1522-frames-pairs";
     private static final ThreadLocal<Map<Path,String>> scope=new ThreadLocal<>();
     private static final ThreadLocal<byte[]> readBuffer=new ThreadLocal<>();
     private static final ThreadLocal<com.google.gson.JsonObject> metadata=new ThreadLocal<>();

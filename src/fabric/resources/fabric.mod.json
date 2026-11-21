@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "bbs_geo_importer",
-  "version": "1.5.20",
+  "version": "1.5.22",
   "name": "BBS Geo Model Importer",
   "environment": "client",
   "entrypoints": {

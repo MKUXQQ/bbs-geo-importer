@@ -1,5 +1,5 @@
 plugins { id 'java' }
-version = '1.5.20'
+version = '1.5.22'
 group = 'local.bbsgeoimporter'
 base { archivesName = 'bbs-geo-importer-1.20.1-fabric' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -7,7 +7,7 @@ repositories { mavenCentral() }
 dependencies {
     testCompileOnly files('E:/我的世界/.minecraft/libraries/cpw/mods/securejarhandler/2.1.10/securejarhandler-2.1.10.jar')
     testImplementation files("E:/我的世界/.minecraft/libraries/org/openjdk/nashorn/nashorn-core/15.4/nashorn-core-15.4.jar", "E:/我的世界/.minecraft/libraries/org/ow2/asm/asm-commons/9.6/asm-commons-9.6.jar")
-    compileOnly files(findProperty('fabricLoaderJar') ?: 'E:/我的世界/.minecraft/libraries/net/fabricmc/fabric-loader/0.16.14/fabric-loader-0.16.14.jar')
+    compileOnly files(findProperty('fabricLoaderJar') ?: 'E:/我的世界/.minecraft/libraries/net/fabricmc/fabric-loader/0.20.1/fabric-loader-0.20.1.jar')
     def gsonJar = files(findProperty('gsonJar') ?: 'E:/我的世界/.minecraft/libraries/com/google/code/gson/gson/2.10/gson-2.10.jar')
     compileOnly gsonJar
     compileOnly files('E:/我的世界/.minecraft/libraries/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar')
@@ -43,11 +43,28 @@ dependencies {
     forgeCompileOnly files('C:/Users/MKUXQ/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.4.28_mapped_official_1.20.1/forge-1.20.1-47.4.28_mapped_official_1.20.1.jar')
     forgeCompileOnly fileTree('E:/我的世界/.minecraft/libraries') { include '**/fmlcore-1.20.1-47.4.28.jar', '**/fmlloader-1.20.1-47.4.28.jar', '**/javafmllanguage-1.20.1-47.4.28.jar', '**/eventbus-6.0.5.jar', '**/forgespi-7.0.1.jar', '**/fmlearlydisplay-1.20.1-47.4.28.jar', '**/mergetool-1.1.5-api.jar' }
 }
-tasks.register('forgeJar', Jar) {
-    archiveBaseName = 'bbs-geo-importer-1.20.1-forge'
+tasks.named('jar') {
+    archiveFileName = 'bbs-geo-importer.jar'
+    reproducibleFileOrder = true
+    preserveFileTimestamps = false
     manifest { attributes 'MixinConfigs': 'bbs_geo_importer.mixins.json' }
-    from(sourceSets.main.output) { exclude 'fabric.mod.json', 'local/bbsgeoimporter/FabricEntrypoint*' }
     from sourceSets.forge.output
+}
+tasks.register('forgeJar') { dependsOn 'jar' }
+tasks.register('realSkinBindingAcceptance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.RealSkinBindingAcceptance'
+    args file(findProperty('skinInstance') ?: 'E:/我的世界/.minecraft/versions/1.20.1-FS-风干兔肉包').absolutePath
+    if(findProperty('otherPacks')) args file(findProperty('otherPacks')).absolutePath
+    maxHeapSize = '640m'; jvmArgs '-XX:ActiveProcessorCount=2'
+}
+tasks.register('declaredFramesAcceptance', JavaExec) {
+    dependsOn testClasses; classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'local.bbsgeoimporter.FrameBindingAcceptance'
+    args file(findProperty('otherPacks') ?: 'E:/我的世界/.minecraft/versions/bbs1.20.1动画/mods').absolutePath,
+         file(findProperty('bbsFixture') ?: 'E:/我的世界/.minecraft/versions/1.20.1-FS-风干兔肉包/mods/bbs-2.7-1.20.1-zh_CN.jar').absolutePath
+    maxHeapSize = '512m'; jvmArgs '-XX:ActiveProcessorCount=2'
 }
 tasks.named('processResources') { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 // Forge output uses production SRG member names for reflected Minecraft calls.

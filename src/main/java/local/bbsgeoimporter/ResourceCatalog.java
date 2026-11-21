@@ -116,6 +116,7 @@ public final class ResourceCatalog {
         resolverStart=System.nanoTime();CobblemonResolvers.analyze(this);report.addProperty("cobblemonResolverMillis",(System.nanoTime()-resolverStart)/1_000_000);
         UvSharedTextures.analyzePoses(this);
         UvSharedTextures.analyze(this);
+        AtlasDisplayResolver.analyze(this);
         resolverStart=System.nanoTime();TextureCandidates.append(this);report.addProperty("candidateDiagnosticsMillis",(System.nanoTime()-resolverStart)/1_000_000);
         report.addProperty("elapsedMillis",(System.nanoTime()-start)/1_000_000);Performance.end("catalog.build",start);for(String key:List.of("censusMillis","resourceIndexMillis","jsonAssociationMillis","literalBytecodeMillis","geckoBytecodeMillis","constantBytecodeMillis","cobblemonResolverMillis","candidateDiagnosticsMillis"))Performance.event("catalog."+key,report.get(key).getAsLong()*1_000_000,0);
     }
