@@ -3,151 +3,155 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="BBS Geo 模型导入器使用说明：安装附属、导入 Mod 中的 Geo 模型，并在 BBS 中按来源管理。">
+  <meta name="description" content="BBS Geo 模型导入器：如何添加同版本和跨版本 Mod 的 Geo 模型，以及如何在 BBS 中按来源管理。">
   <title>BBS Geo 模型导入器 · 使用说明</title>
   <style>
     :root {
       color-scheme: light;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: #1d1d1f;
-      background: white;
-      line-height: 1.7;
-      letter-spacing: 0;
-      --subtle: #54545a;
-      --paper: #f5f5f7;
-      --rule: #d8d8dc;
-      --blue: #0066cc;
+      line-height: 1.65;
+      color: #18191c;
+      background: #fff;
+      --soft: #52565d;
+      --rule: #d8dadd;
+      --blue: #155bbb;
+      --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
     }
-    *, *::before, *::after { box-sizing: border-box; }
-    body, h1, h2, p, ol, dl, dd { margin: 0; }
-    .wrap { width: min(1008px, calc(100% - 96px)); margin-inline: auto; }
-    .hero { background: var(--paper); border-bottom: 1px solid #e8e8ed; }
-    .hero-inner {
-      text-align: center;
-      padding-block: 58px 54px;
-    }
-    .hero-copy { max-width: 100%; margin-inline: auto; }
-    .compat { margin-bottom: 14px; font-size: 1rem; font-weight: 600; color: var(--subtle); }
-    h1 { font-size: 4.25rem; line-height: 1.15; font-weight: 730; text-wrap: balance; }
-    h1 span { display: inline-block; white-space: nowrap; }
-    .intro { margin-top: 22px; font-size: 1.25rem; font-weight: 550; text-wrap: balance; }
-    .scope { margin-top: 3px; color: var(--subtle); font-size: 1rem; }
-    .download { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; }
+    * { box-sizing: border-box; }
+    body, h1, h2, h3, p, ol, dl, dd { margin: 0; }
+    a { color: inherit; }
+    a:focus-visible { outline: 3px solid var(--blue); outline-offset: 5px; }
+    .wrap { width: min(1120px, calc(100% - 96px)); margin-inline: auto; }
+    .mast { background: #f6f7f8; }
+    .bar { display: flex; justify-content: space-between; align-items: center; min-height: 58px; border-bottom: 1px solid var(--rule); }
+    .brand { font-size: 1rem; font-weight: 700; }
+    nav { display: flex; gap: 26px; }
+    nav a { text-decoration: none; color: var(--soft); font-size: .875rem; padding-block: 10px; }
+    nav a:hover { color: var(--blue); text-decoration: underline; text-underline-offset: 4px; }
+    .opening { display: grid; grid-template-columns: 1.18fr 1fr; gap: 52px; align-items: end; padding-block: 64px 66px; }
+    .compat { font-size: .9375rem; color: var(--soft); font-weight: 550; margin-bottom: 20px; }
+    h1 { font-size: 4.5rem; line-height: 1.09; font-weight: 720; }
+    h1 .wordmark { display: block; font-size: 6rem; line-height: .98; margin-bottom: 10px; }
+    .geo { color: var(--blue); }
+    .intro { font-size: 1.3125rem; font-weight: 600; line-height: 1.55; text-wrap: pretty; }
+    .scope, small { color: var(--soft); }
+    .scope { margin-top: 7px; font-size: 1rem; }
+    .download { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-top: 25px; }
     .download a {
-      display: inline-flex; align-items: center; justify-content: center;
-      gap: 9px; min-height: 46px; padding: 8px 22px; border-radius: 99px;
-      color: white; background: var(--blue); text-decoration: none; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 9px; min-height: 44px;
+      padding: 8px 19px; border-radius: 32px; background: #191a1d; color: #fff;
+      text-decoration: none; font-weight: 600; font-size: .95rem;
     }
-    .download a:hover { background: #005bb8; }
-    .download a:active { background: #004f9f; }
-    .download a:focus-visible { outline: 3px solid #1d1d1f; outline-offset: 4px; }
-    .download svg { width: 18px; height: 18px; flex: none; }
-    .download small { font-size: .9375rem; color: var(--subtle); }
-    .chapter { padding-block: 52px 60px; }
-    .chapter + .chapter { background: var(--paper); }
-    .chapter-inner {
-      display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2.35fr);
-      gap: 48px; align-items: baseline;
-    }
-    h2 { font-size: 2.45rem; line-height: 1.2; font-weight: 720; }
-    .details { font-size: 1.0625rem; color: var(--subtle); }
-    .steps { padding-inline-start: 2.3em; list-style-type: decimal-leading-zero; }
-    .steps li { padding-inline-start: .45em; }
-    .steps li::marker { color: #63636a; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .steps li + li, .features div + div { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--rule); }
-    strong, dt { color: #1d1d1f; font-weight: 650; }
-    .step-title, dt { display: block; margin-bottom: 4px; font-size: 1.25rem; line-height: 1.45; }
-    .source-options { padding-inline-start: 14px; border-inline-start: 2px solid var(--rule); margin-top: 10px; }
-    .source-options p + p { margin-top: 10px; }
-    code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: .94em; }
+    .download a:hover { background: var(--blue); }
+    .download svg { width: 17px; height: 17px; }
+    small { font-size: .875rem; }
+    section { scroll-margin-top: 20px; }
+    .guide, .features { padding-block: 48px 54px; }
+    h2 { font-size: 2.5rem; line-height: 1.22; font-weight: 690; margin-bottom: 25px; }
+    h3 { font-size: 1.25rem; line-height: 1.45; font-weight: 660; }
+    .steps { padding: 0; list-style: none; }
+    .steps li { display: grid; grid-template-columns: 2rem 12rem minmax(0, 1fr); align-items: baseline; column-gap: 24px; padding-block: 23px; border-top: 1px solid var(--rule); }
+    .num { font: 500 .875rem/1 var(--mono); color: var(--blue); font-variant-numeric: tabular-nums; }
+    .body, dd { color: var(--soft); font-size: 1rem; line-height: 1.85; text-wrap: pretty; }
+    .cases { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 12px; }
+    .cases p + p { border-inline-start: 1px solid var(--rule); padding-inline-start: 24px; }
+    .cases strong { display: block; color: #18191c; font-weight: 650; margin-bottom: 4px; }
+    code, kbd { font: .95em var(--mono); }
     code { overflow-wrap: anywhere; }
-    kbd { color: #1d1d1f; font-weight: 600; }
-    @media (max-width: 1100px) {
-      h1 { font-size: 3.75rem; }
-      .wrap { width: calc(100% - 72px); }
+    kbd { border: 1px solid #c4c7cd; border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; color: #222428; }
+    .features { background: #f5f5f3; }
+    .features dl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 38px; }
+    .features dl > div { border-top: 1px solid #c9cbce; padding-top: 17px; }
+    dt { font-size: 1.2rem; font-weight: 650; margin-bottom: 6px; }
+    @media (max-width: 1000px) {
+      .wrap { width: calc(100% - 64px); }
+      .opening { grid-template-columns: 1fr 1fr; gap: 30px; }
+      h1 { font-size: 3.5rem; } h1 .wordmark { font-size: 4.75rem; }
+      .steps li { grid-template-columns: 1.6rem 9.5rem minmax(0, 1fr); gap: 18px; }
+      .cases { gap: 16px; } .cases p + p { padding-inline-start: 16px; }
     }
-    @media (max-width: 880px) {
-      .wrap { width: min(680px, calc(100% - 48px)); }
-      .hero-inner { padding-block: 40px 36px; }
-      .hero-copy { width: 100%; text-align: center; }
-      h1 { font-size: 3rem; }
-      h1 span { display: inline-block; }
-      h1 span + span { margin: 0; }
-      .intro { margin-top: 16px; }
-      .download { justify-content: center; margin-top: 18px; }
-      .chapter { padding-block: 36px 42px; }
-      .chapter-inner { grid-template-columns: 1fr; gap: 22px; }
-      h2 { font-size: 2rem; }
+    @media (max-width: 760px) {
+      .wrap { width: min(600px, calc(100% - 40px)); }
+      .bar { min-height: 48px; } nav { gap: 18px; }
+      .opening { grid-template-columns: 1fr; gap: 23px; padding-block: 32px 35px; }
+      .compat { margin-bottom: 14px; }
+      h1 { font-size: 3rem; } h1 .wordmark { font-size: 4.25rem; margin-bottom: 6px; }
+      .intro { font-size: 1.125rem; } .scope { margin-top: 4px; }
+      .download { margin-top: 16px; }
+      .guide, .features { padding-block: 32px 36px; }
+      h2 { font-size: 1.875rem; margin-bottom: 18px; }
+      .steps li { grid-template-columns: 1.5rem minmax(0, 1fr); gap: 6px 10px; padding-block: 18px; }
+      .steps .body { grid-column: 2; }
+      .cases, .features dl { grid-template-columns: 1fr; }
+      .cases { gap: 14px; }
+      .cases p + p { border: 0; border-top: 1px solid var(--rule); padding: 12px 0 0; }
+      .features dl { gap: 18px; }
     }
-    @media (max-width: 540px) {
-      .wrap { width: calc(100% - 36px); }
-      .hero-inner { padding-top: 26px; }
-      h1 { font-size: 2.3rem; }
-      .compat { font-size: .94rem; margin-bottom: 9px; }
-      .intro, .step-title, dt { font-size: 1.125rem; }
-      .intro { margin-top: 12px; }
-      .scope, .details { font-size: 1rem; }
-      .download { flex-direction: column; gap: 5px; margin-top: 16px; }
-      .download small { font-size: .9rem; }
-      .chapter { padding-block: 28px 34px; }
-      h2 { font-size: 1.75rem; }
-      .steps { padding-inline-start: 1.9em; }
-      .steps li { padding-inline-start: .2em; }
-    }
-    @media (max-width: 360px) { h1 { font-size: 1.9rem; } }
-    @media (max-width: 540px) and (max-height: 560px) {
-      .hero-inner { padding-block: 18px 4px; }
-      .chapter { padding-block: 21px; }
-    }
-    @media (max-height: 520px) and (min-width: 541px) {
-      .hero-inner { min-height: 0; padding-block: 18px; }
-      h1 { font-size: 2.25rem; }
-      .compat, .scope { margin-block: 0; }
-      .intro, .download { margin-top: 8px; }
-      .chapter { padding-block: 20px; }
+    @media (max-width: 359px) {
+      .wrap { width: calc(100% - 32px); }
+      nav { gap: 14px; }
+      h1 { font-size: 2.625rem; } h1 .wordmark { font-size: 3.75rem; }
     }
   </style>
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner wrap">
-      <div class="hero-copy">
-        <p class="compat">Minecraft 1.20.1 · Forge / Fabric 同包</p>
-        <h1><span>BBS Geo</span> <span>模型导入器</span></h1>
-        <p class="intro">将 Mod 中的模型导入 BBS，按来源分类查看。</p>
-        <p class="scope">仅支持 Mod 中的 Geo 格式模型（.geo.json）。</p>
-        <div class="download">
-          <a href="https://github.com/MKUXQQ/bbs-geo-importer">
-            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
-            </svg>
-            前往 GitHub 下载
-          </a>
-          <small>在 Releases 中下载 JAR。</small>
+  <header class="mast">
+    <div class="wrap">
+      <div class="bar">
+        <span class="brand">BBS Geo</span>
+        <nav aria-label="页内导航"><a href="#use">如何使用</a><a href="#features">主要功能</a></nav>
+      </div>
+      <div class="opening">
+        <div>
+          <p class="compat">Minecraft 1.20.1 · Forge / Fabric 同包</p>
+          <h1><span class="wordmark">BBS <span class="geo">Geo</span></span> 模型导入器</h1>
+        </div>
+        <div>
+          <p class="intro">将 Mod 中的模型导入 BBS，按来源分类查看。</p>
+          <p class="scope">仅支持 Mod 中的 Geo 格式模型（<code>.geo.json</code>）。</p>
+          <div class="download">
+            <a href="https://github.com/MKUXQQ/bbs-geo-importer">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15V3m-5 7 5 5 5-5m4 5v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              </svg>前往 GitHub 下载
+            </a>
+            <small>在 Releases 中下载 JAR。</small>
+          </div>
         </div>
       </div>
     </div>
   </header>
   <main>
-    <section class="chapter" aria-labelledby="use">
-      <div class="chapter-inner wrap">
-        <h2 id="use">如何使用</h2>
-        <ol class="steps details">
-          <li><strong class="step-title">安装导入器。</strong>将 <code>bbs-geo-importer.jar</code> 直接放入已安装 BBS 的游戏实例的 <code>mods</code> 文件夹，不用解压。Fabric 还需安装 Fabric API。</li>
-          <li><strong class="step-title">添加模型。</strong>假设你用的是 Forge 1.20.1：
-            <div class="source-options">
-              <p><strong>其他版本的 Mod，当前装不了：</strong>把这个 Mod 的 JAR 解压成一个文件夹，保留里面的 <code>assets</code> 目录，再把整个文件夹放进当前实例的 <code>mods</code>。这样不用安装原 Mod，也能把它的 Geo 模型导入 BBS。</p>
+    <section id="use" class="guide wrap" aria-labelledby="use-title">
+      <h2 id="use-title">如何使用</h2>
+      <ol class="steps" role="list">
+        <li>
+          <span class="num" aria-hidden="true">01</span>
+          <h3>安装导入器。</h3>
+          <p class="body">将 <code>bbs-geo-importer.jar</code> 直接放入已安装 BBS 的游戏实例的 <code>mods</code> 文件夹，不用解压。Fabric 还需安装 Fabric API。</p>
+        </li>
+        <li>
+          <span class="num" aria-hidden="true">02</span>
+          <h3>添加模型。</h3>
+          <div class="body">
+            <p>假设你用的是 Forge 1.20.1：</p>
+            <div class="cases">
+              <p><strong>其他版本的 Mod，当前装不了：</strong>把这个 Mod 的 JAR 解压成一个文件夹，再把整个文件夹放进当前实例的 <code>mods</code>。这样不用安装原 Mod，也能把它的 Geo 模型导入 BBS。</p>
               <p><strong>同样是 Forge 1.20.1 的 Mod：</strong>直接把 JAR 放进 <code>mods</code> 就能识别模型，不用解压。你也可以按上面的方法解压成文件夹，两种方式选一种就行。</p>
             </div>
-          </li>
-          <li><strong class="step-title">重新启动游戏。</strong>按 <kbd>B</kbd> 打开 BBS 模型列表，在对应 Mod 的分类中查看模型。</li>
-        </ol>
-      </div>
+          </div>
+        </li>
+        <li>
+          <span class="num" aria-hidden="true">03</span>
+          <h3>重新启动游戏。</h3>
+          <p class="body">按 <kbd>B</kbd> 打开 BBS 模型列表，在对应 Mod 的分类中查看模型。</p>
+        </li>
+      </ol>
     </section>
-    <section class="chapter" aria-labelledby="features">
-      <div class="chapter-inner wrap">
-        <h2 id="features">主要功能</h2>
-        <dl class="features details">
+    <section id="features" class="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title">主要功能</h2>
+        <dl>
           <div><dt>按 Mod 显示或隐藏</dt><dd>在 BBS 设置右侧点击文件夹图标，打开「Mod 模型管理」，即可切换整组模型的显示状态。</dd></div>
           <div><dt>使用原包贴图</dt><dd>多个模型可以共用一张原图；有明确对应关系的多套皮肤可分别选择。可识别的分帧贴图取静态帧展示。</dd></div>
           <div><dt>每次启动只扫描一次</dt><dd>打开或滚动模型列表不会重新扫描。新增的模型来源在下次启动时识别。</dd></div>
