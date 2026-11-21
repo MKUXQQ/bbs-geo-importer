@@ -7,7 +7,7 @@ Minecraft 1.20.1 的 BBS 客户端附属 Mod，同一个 JAR 支持 Forge 和 Fa
 ## 安装与使用
 
 1. 在装有 BBS 的 Forge 或 Fabric 1.20.1 客户端中，将 `bbs-geo-importer.jar` 放进当前实例的 `mods` 目录。Fabric 端需要 Fabric API；两端都只保留一份本附属。
-2. 如果模型来自其他 Minecraft 版本，把那个 Mod 的 JAR 解压成一个独立文件夹，保留原有目录结构。例如，`mods/example-mod/assets/example/geo/creature.geo.json`。附属 Mod 只读取这个解压包的资源。
+2. 添加提供模型的 Mod。以 Forge 1.20.1 为例：能在当前实例正常安装的 Mod，直接把 JAR 放进 `mods` 即可，不用解压。如果只想用模型，或 Mod 的游戏版本、加载器不兼容，就把它的 JAR 解压到 `mods` 下的独立文件夹，保留 `assets` 的原有结构，例如 `mods/example-mod/assets/example/geo/creature.geo.json`。用解压方式时，原 JAR 留在 `mods` 外；导入器只读取资源，不运行原 Mod。
 3. 启动游戏，按 B 查看模型。BBS 设置右侧的文件夹图标可以打开「Mod 模型管理」，按来源显示或隐藏模型。
 
 导入的文件位于当前实例的 `config/bbs/assets/models/`。模型缺图时，查看 `config/bbs/model-import-report.json` 中对应 Geo 的记录。导入器会保留有明确关联的底图和材质。依赖运行时玩家皮肤、自定义渲染器或发光叠加层的效果可能无法完整还原。

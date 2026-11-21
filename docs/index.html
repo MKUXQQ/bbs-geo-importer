@@ -8,118 +8,182 @@
   <style>
     :root {
       color-scheme: light;
-      --forest: #192f2e;
-      --mint: #bcf2d7;
-      --paper: #f7f8f4;
-      --ink: #1e3030;
-      --muted: #455652;
-      --rule: #cdd6cf;
-      font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1d1d1f;
+      background: white;
+      line-height: 1.7;
+      letter-spacing: 0;
+      --subtle: #54545a;
+      --paper: #f5f5f7;
+      --rule: #d8d8dc;
+      --blue: #0066cc;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; color: var(--ink); background: var(--paper); line-height: 1.7; }
-    .wrap { width: min(100% - 96px, 1024px); margin-inline: auto; }
-    .hero { background: var(--forest); color: #f4faf5; }
+    body, h1, h2, p, ol, dl, dd { margin: 0; }
+    .wrap { width: min(1008px, calc(100% - 96px)); margin-inline: auto; }
+    .hero { background: var(--paper); border-bottom: 1px solid #e8e8ed; }
     .hero-inner {
-      position: relative; isolation: isolate; display: grid; align-content: center;
-      min-height: 370px; padding-block: 48px; padding-right: 240px;
+      text-align: center;
+      padding-block: 58px 54px;
     }
-    .lantern {
-      position: absolute; z-index: -1; right: 5%; top: 50%; transform: translateY(-50%);
-      width: 182px; height: auto; image-rendering: pixelated;
-    }
-    .compat { margin: 0 0 13px; color: var(--mint); font-size: 1rem; font-weight: 600; }
-    h1 { margin: 0; font-size: 3.75rem; font-weight: 750; line-height: 1.15; }
-    h1 span { display: inline-block; }
-    .scope { margin: 16px 0 27px; font-size: 1.125rem; color: #e2ebe6; }
-    .download { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+    .hero-copy { max-width: 100%; margin-inline: auto; }
+    .compat { margin-bottom: 14px; font-size: 1rem; font-weight: 600; color: var(--subtle); }
+    h1 { font-size: 4.25rem; line-height: 1.15; font-weight: 730; text-wrap: balance; }
+    h1 span { display: inline-block; white-space: nowrap; }
+    .intro { margin-top: 22px; font-size: 1.25rem; font-weight: 550; text-wrap: balance; }
+    .scope { margin-top: 3px; color: var(--subtle); font-size: 1rem; }
+    .download { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; }
     .download a {
-      display: inline-flex; align-items: center; gap: 14px; min-height: 46px; padding: 8px 18px;
-      background: var(--mint); color: #15352a; border-radius: 3px;
-      text-decoration: none; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 9px; min-height: 46px; padding: 8px 22px; border-radius: 99px;
+      color: white; background: var(--blue); text-decoration: none; font-weight: 600;
     }
-    .download a:hover { background: #d4ffe7; }
-    .download a:focus-visible { outline: 3px solid #f1be77; outline-offset: 4px; }
-    .download small { font-size: .9375rem; color: #c4d5cd; }
-    .guide { padding-block: 7px 28px; }
-    .chapter {
-      display: grid; grid-template-columns: minmax(148px, 1fr) minmax(0, 3fr);
-      gap: 32px; padding-block: 34px;
+    .download a:hover { background: #005bb8; }
+    .download a:active { background: #004f9f; }
+    .download a:focus-visible { outline: 3px solid #1d1d1f; outline-offset: 4px; }
+    .download svg { width: 18px; height: 18px; flex: none; }
+    .download small { font-size: .9375rem; color: var(--subtle); }
+    .chapter { padding-block: 52px 60px; }
+    .chapter + .chapter { background: var(--paper); }
+    .chapter-inner {
+      display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2.35fr);
+      gap: 48px; align-items: baseline;
     }
-    .chapter + .chapter { border-top: 1px solid var(--rule); }
-    h2 { margin: 0; font-size: 1.65rem; line-height: 1.35; }
-    ol, dl, dd, p { margin: 0; }
-    ol { padding-inline-start: 1.7em; }
-    li { padding-left: .15em; }
-    li::marker { color: #297055; font-weight: 700; }
-    li + li, dl > div + div { margin-top: 14px; }
-    .details { color: var(--muted); font-size: 1.0625rem; }
-    strong, dt { color: var(--ink); font-weight: 700; }
-    dt, dd { display: inline; }
-    dt { margin-right: .5em; }
-    code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: .93em; }
+    h2 { font-size: 2.45rem; line-height: 1.2; font-weight: 720; }
+    .details { font-size: 1.0625rem; color: var(--subtle); }
+    .steps { padding-inline-start: 2.3em; list-style-type: decimal-leading-zero; }
+    .steps li { padding-inline-start: .45em; }
+    .steps li::marker { color: #63636a; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .steps li + li, .features div + div { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--rule); }
+    strong, dt { color: #1d1d1f; font-weight: 650; }
+    .step-title, dt { display: block; margin-bottom: 4px; font-size: 1.25rem; line-height: 1.45; }
+    .source-options { padding-inline-start: 14px; border-inline-start: 2px solid var(--rule); margin-top: 10px; }
+    .source-options p + p { margin-top: 10px; }
+    code, kbd { font-family: ui-monospace, Consolas, monospace; font-size: .94em; }
     code { overflow-wrap: anywhere; }
-    kbd { border: 1px solid #b4c2b6; border-bottom-width: 2px; padding: 0 .35em; border-radius: 3px; }
-    @media (max-width: 900px) {
-      .wrap { width: calc(100% - 64px); }
+    kbd { color: #1d1d1f; font-weight: 600; }
+    @media (max-width: 1100px) {
+      h1 { font-size: 3.75rem; }
+      .wrap { width: calc(100% - 72px); }
+    }
+    @media (max-width: 880px) {
+      .wrap { width: min(680px, calc(100% - 48px)); }
+      .hero-inner { padding-block: 40px 36px; }
+      .hero-copy { width: 100%; text-align: center; }
       h1 { font-size: 3rem; }
-      .hero-inner { padding-right: 190px; }
-      .lantern { right: 1%; width: 156px; }
+      h1 span { display: inline-block; }
+      h1 span + span { margin: 0; }
+      .intro { margin-top: 16px; }
+      .download { justify-content: center; margin-top: 18px; }
+      .chapter { padding-block: 36px 42px; }
+      .chapter-inner { grid-template-columns: 1fr; gap: 22px; }
+      h2 { font-size: 2rem; }
     }
-    @media (max-width: 640px) {
-      .wrap { width: calc(100% - 40px); }
-      .hero-inner {
-        min-height: 0; padding: 32px 0 28px;
-        grid-template-columns: minmax(0, 1fr) 94px; column-gap: 12px;
-      }
-      .compat { grid-column: 1 / -1; margin-bottom: 18px; font-size: .9375rem; }
-      h1 { grid-column: 1; align-self: center; font-size: 2.4rem; }
-      .lantern {
-        position: static; grid-column: 2; grid-row: 2; align-self: center;
-        width: 100%; transform: none;
-      }
-      .scope, .download { grid-column: 1 / -1; }
-      .scope { margin: 16px 0 18px; font-size: 1rem; }
-      .chapter { grid-template-columns: minmax(0, 1fr); gap: 15px; padding-block: 25px; }
-      h2 { font-size: 1.4rem; }
-      .details { font-size: 1rem; }
+    @media (max-width: 540px) {
+      .wrap { width: calc(100% - 36px); }
+      .hero-inner { padding-top: 26px; }
+      h1 { font-size: 2.3rem; }
+      .compat { font-size: .94rem; margin-bottom: 9px; }
+      .intro, .step-title, dt { font-size: 1.125rem; }
+      .intro { margin-top: 12px; }
+      .scope, .details { font-size: 1rem; }
+      .download { flex-direction: column; gap: 5px; margin-top: 16px; }
+      .download small { font-size: .9rem; }
+      .chapter { padding-block: 28px 34px; }
+      h2 { font-size: 1.75rem; }
+      .steps { padding-inline-start: 1.9em; }
+      .steps li { padding-inline-start: .2em; }
     }
-    @media (max-width: 360px) {
-      h1 { font-size: 2rem; }
-      .hero-inner { grid-template-columns: minmax(0, 1fr) 76px; }
+    @media (max-width: 360px) { h1 { font-size: 1.9rem; } }
+    @media (max-width: 540px) and (max-height: 560px) {
+      .hero-inner { padding-block: 18px 4px; }
+      .chapter { padding-block: 21px; }
+    }
+    @media (max-height: 520px) and (min-width: 541px) {
+      .hero-inner { min-height: 0; padding-block: 18px; }
+      h1 { font-size: 2.25rem; }
+      .compat, .scope { margin-block: 0; }
+      .intro, .download { margin-top: 8px; }
+      .chapter { padding-block: 20px; }
     }
   </style>
 </head>
 <body>
   <header class="hero">
-    <div class="wrap hero-inner">
-      <p class="compat">Minecraft 1.20.1 · Forge / Fabric 同包</p>
-      <h1><span>BBS Geo</span> <span>模型导入器</span></h1>
-      <p class="scope">仅支持 Mod 中的 Geo 格式模型（.geo.json）。</p>
-      <div class="download">
-        <a href="https://github.com/MKUXQQ/bbs-geo-importer">前往 GitHub 下载<span aria-hidden="true">↗</span></a>
-        <small>在 Releases 中下载 JAR。</small>
+    <div class="hero-inner wrap">
+      <div class="hero-copy">
+        <p class="compat">Minecraft 1.20.1 · Forge / Fabric 同包</p>
+        <h1><span>BBS Geo</span> <span>模型导入器</span></h1>
+        <p class="intro">将 Mod 中的模型导入 BBS，按来源分类查看。</p>
+        <p class="scope">仅支持 Mod 中的 Geo 格式模型（.geo.json）。</p>
+        <div class="download">
+          <a href="https://github.com/MKUXQQ/bbs-geo-importer">
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
+            </svg>
+            前往 GitHub 下载
+          </a>
+          <small>在 Releases 中下载 JAR。</small>
+        </div>
       </div>
-      <img class="lantern" alt="" width="104" height="154" src="data:image/png;base64,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">
     </div>
   </header>
-  <main class="guide wrap">
+  <main>
     <section class="chapter" aria-labelledby="use">
-      <h2 id="use">如何使用</h2>
-      <ol class="details">
-        <li><strong>安装导入器。</strong>将 <code>bbs-geo-importer.jar</code> 直接放入已安装 BBS 的游戏实例的 <code>mods</code> 文件夹，不用解压。Fabric 还需安装 Fabric API。</li>
-        <li><strong>添加模型来源。</strong>已加载的 Mod 不用解压。要使用其他版本 Mod 的模型，把提供模型的 Mod JAR 解压到 <code>mods</code> 下的独立文件夹，保留 <code>assets</code> 原有结构，例如 <code>mods/模型包/assets/</code>。</li>
-        <li><strong>重新启动游戏。</strong>按 <kbd>B</kbd> 打开 BBS 模型列表，在对应 Mod 的分类中查看模型。</li>
-      </ol>
+      <div class="chapter-inner wrap">
+        <h2 id="use">如何使用</h2>
+        <ol class="steps details">
+          <li><strong class="step-title">安装导入器。</strong>将 <code>bbs-geo-importer.jar</code> 直接放入已安装 BBS 的游戏实例的 <code>mods</code> 文件夹，不用解压。Fabric 还需安装 Fabric API。</li>
+          <li><strong class="step-title">添加模型。</strong>以 Forge 1.20.1 为例：
+            <div class="source-options">
+              <p><strong>能正常安装的 Mod：</strong>把它的 JAR 放进 <code>mods</code> 即可，不用解压。如果只想用模型，也可以按下面的方法解压。</p>
+              <p><strong>版本或加载器不兼容的 Mod：</strong>在 <code>mods</code> 下新建一个文件夹，把它的 JAR 解压进去，保留 <code>assets</code> 的原有结构，例如 <code>mods/模型包/assets/</code>。原 JAR 留在 <code>mods</code> 外；这样只导入模型资源，不运行原 Mod。</p>
+            </div>
+          </li>
+          <li><strong class="step-title">重新启动游戏。</strong>按 <kbd>B</kbd> 打开 BBS 模型列表，在对应 Mod 的分类中查看模型。</li>
+        </ol>
+      </div>
     </section>
     <section class="chapter" aria-labelledby="features">
-      <h2 id="features">主要功能</h2>
-      <dl class="details">
-        <div><dt>按 Mod 显示或隐藏</dt><dd>在 BBS 设置右侧点击文件夹图标，打开「Mod 模型管理」，即可切换整组模型的显示状态。</dd></div>
-        <div><dt>使用原包贴图</dt><dd>多个模型可以共用一张原图；有明确对应关系的多套皮肤可分别选择。可识别的分帧贴图取静态帧展示。</dd></div>
-        <div><dt>每次启动只扫描一次</dt><dd>打开或滚动模型列表不会重新扫描。新增的模型来源在下次启动时识别。</dd></div>
-      </dl>
+      <div class="chapter-inner wrap">
+        <h2 id="features">主要功能</h2>
+        <dl class="features details">
+          <div><dt>按 Mod 显示或隐藏</dt><dd>在 BBS 设置右侧点击文件夹图标，打开「Mod 模型管理」，即可切换整组模型的显示状态。</dd></div>
+          <div><dt>使用原包贴图</dt><dd>多个模型可以共用一张原图；有明确对应关系的多套皮肤可分别选择。可识别的分帧贴图取静态帧展示。</dd></div>
+          <div><dt>每次启动只扫描一次</dt><dd>打开或滚动模型列表不会重新扫描。新增的模型来源在下次启动时识别。</dd></div>
+        </dl>
+      </div>
     </section>
   </main>
+  <!-- Download icon: Lucide (ISC), derived from Feather (MIT).
+    Copyright (c) 2026 Lucide Icons and Contributors.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+    MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+    Copyright (c) 2013-present Cole Bemis.
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+  -->
 </body>
 </html>
