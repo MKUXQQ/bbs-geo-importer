@@ -2,7 +2,7 @@
 
 Minecraft 1.20.1 的 BBS 客户端附属 Mod，同一个 JAR 支持 Forge 和 Fabric。游戏启动时，它从已加载的 Mod 和解压的资源文件夹中寻找 Geo 模型、贴图和动画，并把可识别的模型按来源加入 BBS。按 B 打开模型列表或滚动列表时，会复用启动时建立的索引。
 
-[下载 Forge / Fabric 通用版](https://github.com/MKUXQQ/bbs-geo-importer/releases/download/v1.5.22/bbs-geo-importer.jar) · [下载中文功能介绍（HTML，可离线打开）](https://github.com/MKUXQQ/bbs-geo-importer/releases/download/v1.5.22/bbs-geo-importer-features.html)
+[下载 Forge / Fabric 通用版](https://github.com/MKUXQQ/bbs-geo-importer/releases/download/v1.5.22/bbs-geo-importer.jar)
 
 ## 安装与使用
 
