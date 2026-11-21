@@ -134,10 +134,10 @@
         <h2 id="use">如何使用</h2>
         <ol class="steps details">
           <li><strong class="step-title">安装导入器。</strong>将 <code>bbs-geo-importer.jar</code> 直接放入已安装 BBS 的游戏实例的 <code>mods</code> 文件夹，不用解压。Fabric 还需安装 Fabric API。</li>
-          <li><strong class="step-title">添加模型。</strong>以 Forge 1.20.1 为例：
+          <li><strong class="step-title">添加模型。</strong>假设你用的是 Forge 1.20.1：
             <div class="source-options">
-              <p><strong>能正常安装的 Mod：</strong>把它的 JAR 放进 <code>mods</code> 即可，不用解压。如果只想用模型，也可以按下面的方法解压。</p>
-              <p><strong>版本或加载器不兼容的 Mod：</strong>在 <code>mods</code> 下新建一个文件夹，把它的 JAR 解压进去，保留 <code>assets</code> 的原有结构，例如 <code>mods/模型包/assets/</code>。原 JAR 留在 <code>mods</code> 外；这样只导入模型资源，不运行原 Mod。</p>
+              <p><strong>其他版本的 Mod，当前装不了：</strong>把这个 Mod 的 JAR 解压成一个文件夹，保留里面的 <code>assets</code> 目录，再把整个文件夹放进当前实例的 <code>mods</code>。这样不用安装原 Mod，也能把它的 Geo 模型导入 BBS。</p>
+              <p><strong>同样是 Forge 1.20.1 的 Mod：</strong>直接把 JAR 放进 <code>mods</code> 就能识别模型，不用解压。你也可以按上面的方法解压成文件夹，两种方式选一种就行。</p>
             </div>
           </li>
           <li><strong class="step-title">重新启动游戏。</strong>按 <kbd>B</kbd> 打开 BBS 模型列表，在对应 Mod 的分类中查看模型。</li>
